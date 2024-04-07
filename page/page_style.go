@@ -5,13 +5,14 @@ import (
 	"image/color"
 	"reflect"
 
+	"github/oligo/gioview/theme"
+
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"looz.ws/gioview/theme"
 )
 
 type (

@@ -1,11 +1,12 @@
 package page
 
 import (
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/misc"
 )
 
 type Section struct {

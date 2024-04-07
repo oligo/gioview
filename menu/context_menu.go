@@ -4,6 +4,9 @@ import (
 	"image"
 	"log"
 
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+
 	"gioui.org/io/event"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
@@ -15,8 +18,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
-	"looz.ws/gioview/misc"
-	"looz.ws/gioview/theme"
 )
 
 type (

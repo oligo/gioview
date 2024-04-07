@@ -3,13 +3,13 @@ package main
 import (
 	"os"
 
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
+
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
-
-	"github.com/pkg/profile"
+	// "github.com/pkg/profile"
 )
 
 type (
@@ -57,10 +57,7 @@ func (ui *UI) registerViews() {
 }
 
 func main() {
-	// go func() {
-	// 	http.ListenAndServe(":8080", nil)
-	// }()
-	defer profile.Start(profile.MemProfile).Stop()
+	//defer profile.Start(profile.MemProfile).Stop()
 
 	go func() {
 		w := app.NewWindow()

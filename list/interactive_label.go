@@ -4,6 +4,9 @@ import (
 	"image"
 	"image/color"
 
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+
 	"gioui.org/gesture"
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
@@ -12,8 +15,6 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/misc"
 )
 
 type InteractiveLabel struct {

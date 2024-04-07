@@ -4,6 +4,9 @@ import (
 	"image"
 	"image/color"
 
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+
 	"gioui.org/font"
 	"gioui.org/gesture"
 	"gioui.org/io/event"
@@ -15,8 +18,6 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"looz.ws/gioview/misc"
-	"looz.ws/gioview/theme"
 )
 
 type (

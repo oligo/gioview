@@ -3,15 +3,16 @@ package main
 import (
 	//"image"
 
+	gioimg "github/oligo/gioview/image"
+	"github/oligo/gioview/page"
+	"github/oligo/gioview/tabview"
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
+
 	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	gioimg "looz.ws/gioview/image"
-	"looz.ws/gioview/page"
-	"looz.ws/gioview/tabview"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
 )
 
 const (

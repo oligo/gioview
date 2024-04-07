@@ -4,6 +4,10 @@ import (
 	"image"
 	"image/color"
 
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
+
 	"gioui.org/gesture"
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
@@ -15,9 +19,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"golang.org/x/exp/shiny/materialdesign/icons"
-	"looz.ws/gioview/misc"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
 )
 
 type TabEvent string

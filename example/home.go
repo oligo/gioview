@@ -1,6 +1,10 @@
 package main
 
 import (
+	"github/oligo/gioview/navi"
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
+
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -8,9 +12,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"golang.org/x/exp/shiny/materialdesign/icons"
-	"looz.ws/gioview/navi"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
 )
 
 type HomeView struct {

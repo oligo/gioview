@@ -6,6 +6,9 @@ import (
 	"math"
 	"time"
 
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
@@ -17,8 +20,6 @@ import (
 	"gioui.org/widget/material"
 	cmp "gioui.org/x/component"
 	"golang.org/x/exp/shiny/materialdesign/icons"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/misc"
 )
 
 type (

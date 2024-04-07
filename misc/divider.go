@@ -4,11 +4,12 @@ import (
 	"image"
 	"image/color"
 
+	"github/oligo/gioview/theme"
+
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
-	"looz.ws/gioview/theme"
 )
 
 type DividerStyle struct {

@@ -3,8 +3,9 @@ package view
 import (
 	"net/url"
 
+	"github/oligo/gioview/theme"
+
 	"gioui.org/layout"
-	"looz.ws/gioview/theme"
 )
 
 type Widget func(gtx layout.Context, th *theme.Theme) layout.Dimensions

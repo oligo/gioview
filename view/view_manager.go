@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/url"
 
+	"github/oligo/gioview/theme"
+
 	"gioui.org/layout"
-	"looz.ws/gioview/theme"
 )
 
 type ViewID string

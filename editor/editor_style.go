@@ -5,6 +5,8 @@ package editor
 import (
 	"image/color"
 
+	"github/oligo/gioview/theme"
+
 	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -12,7 +14,6 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
-	"looz.ws/gioview/theme"
 )
 
 type EditorStyle struct {

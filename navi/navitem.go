@@ -12,11 +12,11 @@ import (
 	"gioui.org/widget/material"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 
-	"looz.ws/gioview/list"
-	"looz.ws/gioview/menu"
-	"looz.ws/gioview/misc"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
+	"github/oligo/gioview/list"
+	"github/oligo/gioview/menu"
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
 )
 
 var (

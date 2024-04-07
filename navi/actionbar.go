@@ -3,13 +3,14 @@ package navi
 import (
 	"time"
 
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
+
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/unit"
 	cmp "gioui.org/x/component"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
 )
 
 const (

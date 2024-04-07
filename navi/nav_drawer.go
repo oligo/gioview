@@ -4,6 +4,10 @@ import (
 	"image/color"
 	"log"
 
+	"github/oligo/gioview/misc"
+	"github/oligo/gioview/theme"
+	"github/oligo/gioview/view"
+
 	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -11,9 +15,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"looz.ws/gioview/misc"
-	"looz.ws/gioview/theme"
-	"looz.ws/gioview/view"
 )
 
 type (

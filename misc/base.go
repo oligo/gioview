@@ -4,12 +4,13 @@ import (
 	"image"
 	"image/color"
 
+	"github/oligo/gioview/theme"
+
 	"gioui.org/layout"
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"looz.ws/gioview/theme"
 )
 
 type (
