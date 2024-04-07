@@ -3,8 +3,8 @@ package navi
 import (
 	"time"
 
-	"github/oligo/gioview/theme"
-	"github/oligo/gioview/view"
+	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/view"
 
 	"gioui.org/layout"
 	"gioui.org/op"

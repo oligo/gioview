@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github/oligo/gioview/navi"
-	"github/oligo/gioview/theme"
-	"github/oligo/gioview/view"
+	"github.com/oligo/gioview/navi"
+	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/view"
 
 	"gioui.org/app"
 	"gioui.org/layout"

@@ -4,9 +4,9 @@ import (
 	"image/color"
 	"log"
 
-	"github/oligo/gioview/misc"
-	"github/oligo/gioview/theme"
-	"github/oligo/gioview/view"
+	"github.com/oligo/gioview/misc"
+	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/view"
 
 	"gioui.org/font"
 	"gioui.org/layout"

@@ -5,7 +5,7 @@ package editor
 import (
 	"image/color"
 
-	"github/oligo/gioview/theme"
+	"github.com/oligo/gioview/theme"
 
 	"gioui.org/font"
 	"gioui.org/layout"

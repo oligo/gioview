@@ -4,7 +4,7 @@ import (
 	"image"
 	"image/color"
 
-	"github/oligo/gioview/theme"
+	"github.com/oligo/gioview/theme"
 
 	"gioui.org/layout"
 	"gioui.org/text"

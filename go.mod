@@ -1,4 +1,4 @@
-module github/oligo/gioview
+module github.com/oligo/gioview
 
 go 1.21.4
 

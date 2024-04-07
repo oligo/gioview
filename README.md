@@ -17,7 +17,7 @@ Gio-view is a third-party toolkit that simplifies building user interfaces (UIs)
 
 ## Getting Started:
 
-For detailed information on using Gio-view, refer to the project's documentation: TODO.
+For detailed information on using Gio-view, refer to the project's documentation: [godoc](https://pkg.go.dev/github.com/oligo/gioview)
 
 ## Examples:
 

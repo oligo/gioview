@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"sync"
 
-	"github/oligo/gioview/theme"
+	"github.com/oligo/gioview/theme"
 
 	"gioui.org/layout"
 	"gioui.org/unit"

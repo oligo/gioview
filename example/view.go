@@ -3,11 +3,11 @@ package main
 import (
 	//"image"
 
-	gioimg "github/oligo/gioview/image"
-	"github/oligo/gioview/page"
-	"github/oligo/gioview/tabview"
-	"github/oligo/gioview/theme"
-	"github/oligo/gioview/view"
+	gioimg "github.com/oligo/gioview/image"
+	"github.com/oligo/gioview/page"
+	"github.com/oligo/gioview/tabview"
+	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/view"
 
 	"gioui.org/font"
 	"gioui.org/layout"

@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"reflect"
 
-	"github/oligo/gioview/theme"
+	"github.com/oligo/gioview/theme"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"

@@ -3,7 +3,7 @@ package view
 import (
 	"net/url"
 
-	"github/oligo/gioview/theme"
+	"github.com/oligo/gioview/theme"
 
 	"gioui.org/layout"
 )

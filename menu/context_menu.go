@@ -4,8 +4,8 @@ import (
 	"image"
 	"log"
 
-	"github/oligo/gioview/misc"
-	"github/oligo/gioview/theme"
+	"github.com/oligo/gioview/misc"
+	"github.com/oligo/gioview/theme"
 
 	"gioui.org/io/event"
 	"gioui.org/io/key"
