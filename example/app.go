@@ -9,6 +9,7 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/unit"
 	// "github.com/pkg/profile"
 )
 
@@ -61,7 +62,8 @@ func main() {
 
 	go func() {
 		w := app.NewWindow()
-		th := theme.NewTheme(".", true)
+		th := theme.NewTheme(".", nil, true)
+		th.TextSize = unit.Sp(12)
 		ui := &UI{theme: th, window: w}
 		err := ui.Loop()
 		if err != nil {

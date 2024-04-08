@@ -5,8 +5,6 @@ package editor
 import (
 	"image/color"
 
-	"github.com/oligo/gioview/theme"
-
 	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -38,20 +36,35 @@ type EditorStyle struct {
 	shaper *text.Shaper
 }
 
-func NewEditor(th *theme.Theme, editor *Editor, hint string) EditorStyle {
+type EditorConf struct {
+	Shaper         *text.Shaper
+	TextColor      color.NRGBA
+	Bg             color.NRGBA
+	SelectionColor color.NRGBA
+	// typeface for editing
+	TypeFace        font.Typeface
+	TextSize        unit.Sp
+	Weight          font.Weight
+	LineHeight      unit.Sp
+	LineHeightScale float32
+	//May be helpful for code syntax highlighting.
+	ColorScheme string
+}
+
+func NewEditor(editor *Editor, conf EditorConf, hint string) EditorStyle {
 	return EditorStyle{
 		Editor: editor,
 		Font: font.Font{
-			Typeface: th.Editor.TypeFace,
-			Weight:   th.Editor.Weight,
+			Typeface: conf.TypeFace,
+			Weight:   conf.Weight,
 		},
-		LineHeightScale: th.Editor.LineHeightScale,
-		TextSize:        th.Editor.TextSize,
-		Color:           th.Palette.Fg,
-		shaper:          th.Shaper,
+		LineHeightScale: conf.LineHeightScale,
+		TextSize:        conf.TextSize,
+		Color:           conf.TextColor,
+		shaper:          conf.Shaper,
 		Hint:            hint,
-		HintColor:       MulAlpha(th.Palette.Fg, 0xbb),
-		SelectionColor:  MulAlpha(th.Palette.ContrastBg, 0x60),
+		HintColor:       MulAlpha(conf.TextColor, 0xbb),
+		SelectionColor:  MulAlpha(conf.SelectionColor, 0x60),
 	}
 }
 
