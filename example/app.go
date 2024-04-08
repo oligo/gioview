@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image/color"
 	"os"
 
 	"github.com/oligo/gioview/theme"
@@ -64,6 +65,8 @@ func main() {
 		w := app.NewWindow()
 		th := theme.NewTheme(".", nil, true)
 		th.TextSize = unit.Sp(12)
+		th.Bg2 = color.NRGBA{R: 225, G: 225, B: 225, A: 255}
+
 		ui := &UI{theme: th, window: w}
 		err := ui.Loop()
 		if err != nil {

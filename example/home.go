@@ -1,8 +1,6 @@
 package main
 
 import (
-	"image/color"
-
 	"github.com/oligo/gioview/navi"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
@@ -62,7 +60,7 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 					Bottom: unit.Dp(20),
 					Left:   unit.Dp(20),
 				},
-				Bg:    color.NRGBA{R: 225, G: 225, B: 225, A: 255},
+				Bg:    th.Bg2,
 				Width: unit.Dp(max(gtx.Constraints.Max.X/(6*int(gtx.Metric.PxPerDp)), 220)),
 			}.Layout(gtx, th)
 

@@ -78,7 +78,7 @@ func (l *InteractiveLabel) layoutBackground(gtx layout.Context, th *theme.Theme)
 
 	var fill color.NRGBA
 	if l.hovering {
-		fill = misc.WithAlpha(th.Palette.Fg, th.AlphaPalette.Hover)
+		fill = misc.WithAlpha(th.Palette.Fg, th.HoverAlpha)
 	} else if l.isSelected {
 		fill = misc.WithAlpha(th.Palette.ContrastBg, uint8(255))
 	}

@@ -51,7 +51,7 @@ type EditorConf struct {
 	ColorScheme string
 }
 
-func NewEditor(editor *Editor, conf EditorConf, hint string) EditorStyle {
+func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
 	return EditorStyle{
 		Editor: editor,
 		Font: font.Font{

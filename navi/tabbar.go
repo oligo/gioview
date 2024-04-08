@@ -230,7 +230,7 @@ func (tab *Tab) layoutBackground(gtx C, th *theme.Theme) D {
 	if tab.isSelected {
 		fill = th.Palette.ContrastBg
 	} else if tab.hovering {
-		fill = misc.WithAlpha(th.Palette.ContrastBg, th.AlphaPalette.Hover)
+		fill = misc.WithAlpha(th.Palette.ContrastBg, th.HoverAlpha)
 	}
 	rect := clip.Rect{
 		Max: image.Point{X: gtx.Constraints.Max.X, Y: gtx.Constraints.Max.Y},

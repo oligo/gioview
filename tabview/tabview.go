@@ -128,9 +128,9 @@ func (item *TabItem) layoutTab(gtx C, th *theme.Theme) D {
 func (item *TabItem) layoutTabBackground(gtx C, th *theme.Theme) D {
 	var fill color.NRGBA
 	if item.hovering {
-		fill = misc.WithAlpha(th.Palette.Fg, th.AlphaPalette.Hover)
+		fill = misc.WithAlpha(th.Palette.Fg, th.HoverAlpha)
 	} else if item.selected {
-		fill = misc.WithAlpha(th.Palette.Fg, th.AlphaPalette.Selected)
+		fill = misc.WithAlpha(th.Palette.Fg, th.SelectedAlpha)
 	}
 
 	rr := gtx.Dp(unit.Dp(4))

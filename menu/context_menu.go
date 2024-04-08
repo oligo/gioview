@@ -170,7 +170,7 @@ func (m *ContextMenu) layoutOptions(gtx C, th *theme.Theme) D {
 		})
 		call := macro.Stop()
 		defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
-		paint.ColorOp{Color: th.ContrastBg}.Add(gtx.Ops)
+		paint.ColorOp{Color: th.Bg2}.Add(gtx.Ops)
 		paint.PaintOp{}.Add(gtx.Ops)
 		call.Add(gtx.Ops)
 
