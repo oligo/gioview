@@ -23,6 +23,10 @@ For detailed information on using Gio-view, refer to the project's documentation
 
 Gio-view offers an example demonstrating its features. Clone the repository and run it from the "example" directory for a hands-on exploration.
 
+Screenshots of the example:
+
+![editor](./screenshots/Screenshot-2.png) ![image & tabview](./screenshots/Screenshot-1.png)
+
 ## Caveats:
 
 * **Desktop Focus**: Currently, Gio-view primarily targets desktop applications. While Gio itself is cross-platform, some styling adjustments might be needed for mobile UIs.
