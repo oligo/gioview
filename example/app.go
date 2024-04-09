@@ -55,6 +55,11 @@ func (ui *UI) registerViews() {
 		func() view.View { return NewExampleView() },
 	))
 
+	vm.Register(view.Provide(
+		ExampleView2ID,
+		func() view.View { return NewExampleView2() },
+	))
+
 	ui.vm = vm
 }
 

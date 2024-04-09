@@ -15,15 +15,14 @@ import (
 	"gioui.org/widget/material"
 )
 
-const (
-	ExampleViewID = view.ViewID("Example")
+var (
+	ExampleViewID = view.NewViewID("Example")
 )
 
 type ExampleView struct {
 	*view.BaseView
 	page.PageStyle
 	tabView *tabview.TabView
-	err     error
 	img     *gioimg.ImageSource
 }
 
@@ -32,7 +31,7 @@ func (vw *ExampleView) ID() view.ViewID {
 }
 
 func (vw *ExampleView) Title() string {
-	return "Example"
+	return "Tabviews & Image"
 }
 
 func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {

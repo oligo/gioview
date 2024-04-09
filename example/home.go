@@ -34,9 +34,8 @@ func (hv *HomeView) update(gtx C) {
 func (hv *HomeView) buildSidePanel() {
 	sidepanel := navi.NewNavDrawer(hv.ViewManager)
 
-	SearchNav().Attach(sidepanel)
-	SettingsNav().Attach(sidepanel)
 	ExampleNav().Attach(sidepanel)
+	ExampleNav2().Attach(sidepanel)
 
 	hv.sidebar = sidepanel
 }
@@ -128,14 +127,10 @@ var (
 	searchIcon, _   = widget.NewIcon(icons.ActionSearch)
 )
 
-func SettingsNav() navi.NavSection {
-	return navi.SimpleItemSection(settingsIcon, "Settings", view.ViewID("SettingsView"))
-}
-
 func ExampleNav() navi.NavSection {
-	return navi.SimpleItemSection(helpIcon, "Example view", ExampleViewID)
+	return navi.SimpleItemSection(helpIcon, "Tabviews & Image", ExampleViewID)
 }
 
-func SearchNav() navi.NavSection {
-	return navi.SimpleItemSection(searchIcon, "Search", view.ViewID("SearchView"))
+func ExampleNav2() navi.NavSection {
+	return navi.SimpleItemSection(helpIcon, "Editor Example", ExampleView2ID)
 }

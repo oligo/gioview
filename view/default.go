@@ -98,7 +98,7 @@ func (vm *defaultViewManager) RequestSwitch(intent Intent) error {
 	// Even if using a empty intent, vm refreshes the window.
 	defer vm.window.Invalidate()
 
-	if intent.Target == "" {
+	if intent.Target == (ViewID{}) {
 		return nil
 	}
 	provider, ok := vm.views[intent.Target]

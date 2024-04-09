@@ -27,7 +27,7 @@ type SimpleView struct {
 	intentHandler func(intent Intent) error
 }
 
-func (base *BaseView) ID() ViewID { return ViewID("") }
+func (base *BaseView) ID() ViewID { return ViewID{} }
 
 func (base *BaseView) Title() string { return "Base" }
 
@@ -97,7 +97,7 @@ func (v EmptyView) OnNavTo(intent Intent) error {
 	return nil
 }
 
-func (v EmptyView) ID() ViewID    { return ViewID("Blank") }
+func (v EmptyView) ID() ViewID    { return NewViewID("Blank") }
 func (v EmptyView) Title() string { return "Blank" }
 func (v EmptyView) Location() url.URL {
 	return BuildURL(v.ID(), nil)

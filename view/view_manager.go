@@ -9,7 +9,10 @@ import (
 	"gioui.org/layout"
 )
 
-type ViewID string
+type ViewID struct {
+	name string
+	path string
+}
 
 type Intent struct {
 	Target      ViewID
@@ -95,10 +98,7 @@ func BuildURL(target ViewID, params map[string]interface{}) url.URL {
 		urlParams.Add(k, fmt.Sprintf("%v", v))
 	}
 
-	return url.URL{
-		Scheme:   "gioview",
-		Host:     "local",
-		Path:     string(target),
-		RawQuery: urlParams.Encode(),
-	}
+	u := target.Path()
+	u.RawQuery = urlParams.Encode()
+	return u
 }
