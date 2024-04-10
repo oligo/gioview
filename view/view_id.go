@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+func (id ViewID) Name() string {
+	return id.name
+}
+
 func (id ViewID) Path() url.URL {
 	u, err := url.Parse(fmt.Sprintf("gioview://%s/%s", id.path, id.name))
 	if err != nil {

@@ -611,9 +611,9 @@ func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.Call
 		e.scrollCaret = false
 		e.text.ScrollToCaret()
 	}
-	//visibleDims := e.text.Dimensions()
+	visibleDims := e.text.Dimensions()
 
-	defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Max}).Push(gtx.Ops).Pop()
+	defer clip.Rect(image.Rectangle{Max: visibleDims.Size}).Push(gtx.Ops).Pop()
 	pointer.CursorText.Add(gtx.Ops)
 	event.Op(gtx.Ops, e)
 	key.InputHintOp{Tag: e, Hint: e.InputHint}.Add(gtx.Ops)
@@ -642,7 +642,7 @@ func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.Call
 	if gtx.Enabled() {
 		e.paintCaret(gtx, textMaterial)
 	}
-	return layout.Dimensions{Size: gtx.Constraints.Max}
+	return visibleDims
 }
 
 // paintSelection paints the contrasting background for selected text using the provided

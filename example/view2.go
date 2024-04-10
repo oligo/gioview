@@ -53,7 +53,7 @@ func (vw *ExampleView2) Layout(gtx layout.Context, th *theme.Theme) layout.Dimen
 
 			layout.Rigid(func(gtx C) D {
 				vw.patternInput.Alignment = text.Middle
-				return vw.patternInput.Layout(gtx, th.Theme, "Regex of substring to be hightlighted")
+				return vw.patternInput.Layout(gtx, th.Theme, "Regex of substring hightlighted")
 			}),
 
 			layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
@@ -73,7 +73,6 @@ func (vw *ExampleView2) Layout(gtx layout.Context, th *theme.Theme) layout.Dimen
 				vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
 
 				return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
-
 			}),
 		)
 	})
