@@ -48,6 +48,7 @@ func NewNavDrawer(vm view.ViewManager) *NavDrawer {
 }
 
 func (nv *NavDrawer) AddSection(item NavSection) {
+	item.Attach(nv)
 	nv.listItems = append(nv.listItems, item)
 }
 

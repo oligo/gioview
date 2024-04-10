@@ -25,19 +25,7 @@ func (hv *HomeView) ID() string {
 	return "Home"
 }
 func (hv *HomeView) update(gtx C) {
-	if hv.sidebar == nil {
-		hv.buildSidePanel()
-	}
-
-}
-
-func (hv *HomeView) buildSidePanel() {
-	sidepanel := navi.NewNavDrawer(hv.ViewManager)
-
-	ExampleNav().Attach(sidepanel)
-	ExampleNav2().Attach(sidepanel)
-
-	hv.sidebar = sidepanel
+	// handle events and states update
 }
 
 func (hv *HomeView) Layout(gtx C, th *theme.Theme) layout.Dimensions {
@@ -114,23 +102,20 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 func newHome(window *app.Window) *HomeView {
 	vm := view.DefaultViewManager(window)
 
+	sidebar := navi.NewNavDrawer(vm)
+	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Tabviews & Image", ExampleViewID))
+	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Editor Example", EditorExampleViewID))
+
+	vm.Register(ExampleViewID, NewExampleView)
+	vm.Register(EditorExampleViewID, NewEditorExample)
+
 	return &HomeView{
 		ViewManager: vm,
 		tabbar:      navi.NewTabbar(vm),
-		sidebar:     nil,
+		sidebar:     sidebar,
 	}
 }
 
 var (
-	settingsIcon, _ = widget.NewIcon(icons.ActionSettings)
-	helpIcon, _     = widget.NewIcon(icons.ActionHelp)
-	searchIcon, _   = widget.NewIcon(icons.ActionSearch)
+	viewIcon, _ = widget.NewIcon(icons.ActionViewModule)
 )
-
-func ExampleNav() navi.NavSection {
-	return navi.SimpleItemSection(helpIcon, "Tabviews & Image", ExampleViewID)
-}
-
-func ExampleNav2() navi.NavSection {
-	return navi.SimpleItemSection(helpIcon, "Editor Example", ExampleView2ID)
-}

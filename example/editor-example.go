@@ -21,25 +21,25 @@ import (
 )
 
 var (
-	ExampleView2ID = view.NewViewID("Example2")
+	EditorExampleViewID = view.NewViewID("EditorExampleView")
 )
 
-type ExampleView2 struct {
+type EditorExample struct {
 	*view.BaseView
 	page.PageStyle
 	ed           *editor.Editor
 	patternInput component.TextField
 }
 
-func (vw *ExampleView2) ID() view.ViewID {
-	return ExampleView2ID
+func (vw *EditorExample) ID() view.ViewID {
+	return EditorExampleViewID
 }
 
-func (vw *ExampleView2) Title() string {
+func (vw *EditorExample) Title() string {
 	return "Editor Example"
 }
 
-func (vw *ExampleView2) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
+func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
 	return vw.PageStyle.Layout(gtx, th, func(gtx C) D {
 		return layout.Flex{
 			Axis:      layout.Vertical,
@@ -78,13 +78,13 @@ func (vw *ExampleView2) Layout(gtx layout.Context, th *theme.Theme) layout.Dimen
 	})
 }
 
-func (va *ExampleView2) OnFinish() {
+func (va *EditorExample) OnFinish() {
 	va.BaseView.OnFinish()
 	// Put your cleanup code here.
 }
 
-func NewExampleView2() *ExampleView2 {
-	v := &ExampleView2{
+func NewEditorExample() view.View {
+	v := &EditorExample{
 		BaseView: &view.BaseView{},
 		ed:       &editor.Editor{},
 	}
@@ -119,8 +119,5 @@ func stylingText(text string, pattern string) []*editor.TextStyle {
 }
 
 var sampleText = `
-Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) 
-for desktop applications written with the Gio library in Go. It provides pre-built components and widgets,
-saving you time and effort compared to creating everything from scratch. Gio-view offers a more user-friendly 
-experience for developers new to Gio.
+Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go. It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a more user-friendly experience for developers new to Gio.
 `

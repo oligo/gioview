@@ -118,7 +118,7 @@ func (va *ExampleView) OnFinish() {
 	// Put your cleanup code here.
 }
 
-func NewExampleView() *ExampleView {
+func NewExampleView() view.View {
 	return &ExampleView{
 		BaseView: &view.BaseView{},
 	}

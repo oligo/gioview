@@ -56,17 +56,23 @@ func (vm *defaultViewManager) CurrentViewIndex() int {
 // 	return vm.RegisterWithProvider(Provide(vw))
 // }
 
-func (vm *defaultViewManager) Register(provider ViewProvider) error {
+func (vm *defaultViewManager) Register(ID ViewID, provider ViewProvider) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
+	
+	if ID == (ViewID{}) {
+		return errors.New("cannot register empty view ID")
+	}
+
 	if provider == nil {
 		return errors.New("view provider is nil")
 	}
+
 	if vm.views == nil {
 		vm.views = make(map[ViewID]ViewProvider)
 	}
-	vm.views[provider.ID()] = provider
-	log.Println("registered view: ", provider.ID())
+	vm.views[ID] = provider
+	log.Println("registered view: ", ID)
 	return nil
 }
 
@@ -115,7 +121,7 @@ func (vm *defaultViewManager) RequestSwitch(intent Intent) error {
 	} else {
 		// intent with RequireNew == true will provide a new view instance.
 		// And vm.route should return a new stack.
-		targetView = provider.Provide(intent)
+		targetView = provider()
 		err := stack.Push(targetView)
 		if err != nil {
 			return fmt.Errorf("push to viewstack error: %w", err)

@@ -233,7 +233,6 @@ func (ss simpleItemSection) Layout(gtx C, th *theme.Theme) D {
 }
 
 func (ss simpleItemSection) Attach(d *NavDrawer) {
-	d.AddSection(ss)
 	ss.item.drawer = d
 }
 

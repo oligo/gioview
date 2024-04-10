@@ -44,22 +44,24 @@ type View interface {
 	Finished() bool
 }
 
-// ViewProvider provides View. This enables us to write dynamic views.
-type ViewProvider interface {
-	// ID returns ViewID of the View that provider provides.
-	ID() ViewID
-	Provide(intent Intent) View
-}
+// ViewProvider is used to construct new View instance. Each view
+// should provide its own provider. Usually this is the constructor of the view.
+type ViewProvider func() View
 
-// A multi tab view manager. Each view pushed to the manager have a
-// managed history stack.
+// View manager is the core of gio-view. It can be used to:
+//  1. manages views and modals;
+//  2. dispatch view/modal requests via the Intent object.
+//  3. views navigation.
+//
+// Views can have a bounded history stack depending its intent request.
+// The history stack is bounded to a tab widget which is part of a tab bar.
+// Most the the API of the view manager handles navigating between views.
 type ViewManager interface {
-	// Register is used to register all views before all the view rendering happens.
+	// Register is used to register views before the view rendering happens.
 	// Use provider to enable us to use dynamically constructed views.
-	Register(provider ViewProvider) error
-	// RegisterWithProvider(provider ViewProvider) error
+	Register(ID ViewID, provider ViewProvider) error
 
-	// try to swith the current view to the requested view. If referer of the intent equals to
+	// Try to swith the current view to the requested view. If referer of the intent equals to
 	// the current viewID of the current tab, the requested view should be routed and pushed to
 	// to the existing viewstack(current tab). Otherwise a new viewstack for the intent is created(a new tab)
 	// if there's no duplicate active view (first views of the stacks).

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/oligo/gioview/theme"
-	"github.com/oligo/gioview/view"
 
 	"gioui.org/app"
 	"gioui.org/layout"
@@ -26,8 +25,6 @@ type UI struct {
 }
 
 func (ui *UI) Loop() error {
-	ui.registerViews()
-
 	var ops op.Ops
 	for {
 		e := ui.window.NextEvent()
@@ -44,23 +41,11 @@ func (ui *UI) Loop() error {
 }
 
 func (ui *UI) layout(gtx C) D {
+	if ui.vm == nil {
+		ui.vm = newHome(ui.window)
+	}
+
 	return ui.vm.Layout(gtx, ui.theme)
-}
-
-func (ui *UI) registerViews() {
-	vm := newHome(ui.window)
-	// vm.Register(&view.EmptyView{})
-	vm.Register(view.Provide(
-		ExampleViewID,
-		func() view.View { return NewExampleView() },
-	))
-
-	vm.Register(view.Provide(
-		ExampleView2ID,
-		func() view.View { return NewExampleView2() },
-	))
-
-	ui.vm = vm
 }
 
 func main() {
