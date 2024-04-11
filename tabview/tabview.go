@@ -210,7 +210,7 @@ func (tv *TabView) Layout(gtx C, th *theme.Theme) D {
 			if tv.Axis == layout.Horizontal {
 				return layout.Spacer{Height: unit.Dp(2)}.Layout(gtx)
 			} else {
-				return layout.Spacer{Width: unit.Dp(2)}.Layout(gtx)
+				return layout.Spacer{Width: unit.Dp(12)}.Layout(gtx)
 			}
 		}),
 

@@ -30,7 +30,7 @@ Screenshots of the example:
 ## Caveats:
 
 * **Desktop Focus**: Currently, Gio-view primarily targets desktop applications. While Gio itself is cross-platform, some styling adjustments might be needed for mobile UIs.
-* **Limited Customization**: Out-of-the-box themes and styles might not offer complete design flexibility.
+* **Limited Customization**: Out-of-the-box styles might not offer complete design flexibility.
 
 
 ## Contributing
