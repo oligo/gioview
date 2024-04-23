@@ -23,6 +23,13 @@ var (
 	moreIcon, _ = widget.NewIcon(icons.NavigationMoreHoriz)
 )
 
+var NavItemPadding = layout.Inset{
+	Left:   unit.Dp(4),
+	Right:  unit.Dp(4),
+	Top:    unit.Dp(5),
+	Bottom: unit.Dp(5),
+}
+
 type NavSection interface {
 	Title() string
 	Layout(gtx C, th *theme.Theme) D
@@ -48,7 +55,6 @@ type NavItemStyle struct {
 	fixMenuPos  bool
 	showMenuBtn widget.Clickable
 
-	padding   unit.Dp
 	childList layout.List
 	children  []*NavItemStyle
 }
@@ -75,7 +81,7 @@ func (n *NavItemStyle) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Di
 	macro := op.Record(gtx.Ops)
 	dims := layout.Inset{Bottom: unit.Dp(2)}.Layout(gtx, func(gtx C) D {
 		return n.label.Layout(gtx, th, func(gtx C, color color.NRGBA) D {
-			return layout.UniformInset(n.padding).Layout(gtx, func(gtx C) D {
+			return NavItemPadding.Layout(gtx, func(gtx C) D {
 				return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 					layout.Rigid(func(gtx C) D {
 						if n.item.Icon() == nil {
@@ -131,10 +137,6 @@ func (n *NavItemStyle) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Di
 func (n *NavItemStyle) Layout(gtx C, th *theme.Theme) D {
 	if n.label == nil {
 		n.label = &list.InteractiveLabel{}
-	}
-
-	if n.padding <= 0 {
-		n.padding = unit.Dp(1)
 	}
 
 	n.Update(gtx)
