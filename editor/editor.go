@@ -63,10 +63,7 @@ type Editor struct {
 	// scratch is a byte buffer that is reused to efficiently read portions of text
 	// from the textView.
 	scratch      []byte
-	eventKey     int
 	blinkStart   time.Time
-	focused      bool
-	requestFocus bool
 
 	// ime tracks the state relevant to input methods.
 	ime struct {
@@ -82,10 +79,6 @@ type Editor struct {
 
 	clicker gesture.Click
 
-	// events is the list of events not yet processed.
-	events []EditorEvent
-	// prevEvents is the number of events from the previous frame.
-	prevEvents int
 	// history contains undo history.
 	history []modification
 	// nextHistoryIdx is the index within the history of the next modification. This

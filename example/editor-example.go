@@ -65,7 +65,7 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 					Bg:              th.Bg,
 					SelectionColor:  th.ContrastBg,
 					TypeFace:        "Go, Helvetica, Arial, sans-serif",
-					TextSize:        th.TextSize,
+					TextSize:        th.TextSize * 3,
 					LineHeightScale: 1.6,
 					ColorScheme:     "default",
 				}
@@ -119,5 +119,7 @@ func stylingText(text string, pattern string) []*editor.TextStyle {
 }
 
 var sampleText = `
+🥳🧁🍰🎁🎂🎈🎺🎉🎊
+📧〽️🧿🌶️🔋
 Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go. It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a more user-friendly experience for developers new to Gio.
 `

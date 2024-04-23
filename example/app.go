@@ -53,7 +53,7 @@ func main() {
 
 	go func() {
 		w := app.NewWindow()
-		th := theme.NewTheme(".", nil, false)
+		th := theme.NewTheme("./fonts", nil, false)
 		th.TextSize = unit.Sp(12)
 		th.Bg2 = color.NRGBA{R: 225, G: 225, B: 225, A: 255}
 

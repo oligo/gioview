@@ -24,6 +24,7 @@ type ExampleView struct {
 	page.PageStyle
 	tabView *tabview.TabView
 	img     *gioimg.ImageSource
+	link    *view.Link
 }
 
 func (vw *ExampleView) ID() view.ViewID {
@@ -60,6 +61,10 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 
 			layout.Rigid(func(gtx C) D {
 				return vw.layoutTabViews(gtx, th)
+			}),
+
+			layout.Rigid(func(gtx C) D {
+				return view.NewLink(vw.link, "label").Layout(gtx, th)
 			}),
 		)
 	})
@@ -121,6 +126,7 @@ func (va *ExampleView) OnFinish() {
 func NewExampleView() view.View {
 	return &ExampleView{
 		BaseView: &view.BaseView{},
+		link:     &view.Link{Src: EditorExampleViewID, Title: "This is a great link"},
 	}
 }
 
