@@ -26,8 +26,8 @@ var (
 var NavItemPadding = layout.Inset{
 	Left:   unit.Dp(4),
 	Right:  unit.Dp(4),
-	Top:    unit.Dp(5),
-	Bottom: unit.Dp(5),
+	Top:    unit.Dp(1),
+	Bottom: unit.Dp(1),
 }
 
 type NavSection interface {

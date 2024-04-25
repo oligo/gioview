@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/oligo/gioview/filetree"
 	"github.com/oligo/gioview/navi"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
@@ -105,6 +106,7 @@ func newHome(window *app.Window) *HomeView {
 	sidebar := navi.NewNavDrawer(vm)
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Tabviews & Image", ExampleViewID))
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Editor Example", EditorExampleViewID))
+	sidebar.AddSection(filetree.NewFileTreeNav("File Explorer", "../", []string{"."}))
 
 	vm.Register(ExampleViewID, NewExampleView)
 	vm.Register(EditorExampleViewID, NewEditorExample)

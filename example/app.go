@@ -27,7 +27,7 @@ type UI struct {
 func (ui *UI) Loop() error {
 	var ops op.Ops
 	for {
-		e := ui.window.NextEvent()
+		e := ui.window.Event()
 
 		switch e := e.(type) {
 		case app.DestroyEvent:
@@ -52,9 +52,9 @@ func main() {
 	//defer profile.Start(profile.MemProfile).Stop()
 
 	go func() {
-		w := app.NewWindow()
+		w := &app.Window{}
 		th := theme.NewTheme("./fonts", nil, false)
-		th.TextSize = unit.Sp(12)
+		th.TextSize = unit.Sp(14)
 		th.Bg2 = color.NRGBA{R: 225, G: 225, B: 225, A: 255}
 
 		ui := &UI{theme: th, window: w}

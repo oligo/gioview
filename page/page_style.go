@@ -24,21 +24,17 @@ var (
 	// white
 	defaultBackgroundColor = color.NRGBA{}
 	maxWidth               = unit.Dp(760)
-	defaultPadding         = unit.Dp(24)
 )
 
 type PageStyle struct {
 	Background color.NRGBA
+	// Minimun padding of the left and right side.
 	Padding    unit.Dp
 	MaxWidth   unit.Dp
 	listState  *widget.List
 }
 
 func (p *PageStyle) Layout(gtx C, th *theme.Theme, items ...layout.Widget) D {
-	if reflect.ValueOf(p.Padding).IsZero() {
-		p.Padding = unit.Dp(defaultPadding)
-	}
-
 	if reflect.ValueOf(p.MaxWidth).IsZero() {
 		p.MaxWidth = unit.Dp(maxWidth)
 	}
@@ -70,8 +66,6 @@ func (p *PageStyle) Layout(gtx C, th *theme.Theme, items ...layout.Widget) D {
 
 	return material.List(th.Theme, p.listState).Layout(gtx, len(items), func(gtx C, index int) D {
 		return layout.Inset{
-			Top:    defaultPadding,
-			Bottom: defaultPadding,
 			Left:   padding,
 			Right:  padding,
 		}.Layout(gtx, items[index])

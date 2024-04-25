@@ -65,7 +65,7 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 					Bg:              th.Bg,
 					SelectionColor:  th.ContrastBg,
 					TypeFace:        "Go, Helvetica, Arial, sans-serif",
-					TextSize:        th.TextSize * 3,
+					TextSize:        th.TextSize,
 					LineHeightScale: 1.6,
 					ColorScheme:     "default",
 				}
