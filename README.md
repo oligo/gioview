@@ -2,6 +2,8 @@
 
 Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go. It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a more user-friendly experience for developers new to Gio.
 
+A significant portion of the Gio-view codebase originates from the Fernnote project (https://fernnote.vip/). If you're interested in seeing a practical example of Gio-view, Fernnote is a good starting point.
+
 ## Features:
 
 * **View Manager**: Manages the lifecycle of your views and handles user interactions between them.
@@ -25,7 +27,9 @@ Gio-view offers an example demonstrating its features. Clone the repository and 
 
 Screenshots of the example:
 
-![editor](./screenshots/Screenshot-2.png) ![image & tabview](./screenshots/Screenshot-1.png)
+![editor](./screenshots/Screenshot-2.png) 
+![image & tabview](./screenshots/Screenshot-1.png)
+![file explorer](./screenshots/Screenshot-3.png)
 
 ## Caveats:
 
