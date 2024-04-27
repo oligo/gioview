@@ -27,6 +27,9 @@ type NavDrawer struct {
 	selectedItem *NavItemStyle
 	listItems    []NavSection
 	listState    *widget.List
+
+	// used to set inset of each section.
+	SectionInset layout.Inset
 }
 
 type NaviDrawerStyle struct {
@@ -53,11 +56,15 @@ func (nv *NavDrawer) AddSection(item NavSection) {
 }
 
 func (nv *NavDrawer) Layout(gtx C, th *theme.Theme) D {
+	if nv.SectionInset == (layout.Inset{}) {
+		nv.SectionInset = layout.Inset{
+			Bottom: unit.Dp(5),
+		}
+	}
+
 	return material.List(th.Theme, nv.listState).Layout(gtx, len(nv.listItems), func(gtx C, index int) D {
 		item := nv.listItems[index]
-		dims := layout.Inset{
-			Bottom: unit.Dp(5),
-		}.Layout(gtx, func(gtx C) D {
+		dims := nv.SectionInset.Layout(gtx, func(gtx C) D {
 			return layout.Flex{
 				Axis: layout.Vertical,
 			}.Layout(gtx,
