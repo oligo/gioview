@@ -43,7 +43,7 @@ type NavItem interface {
 	// when there's menu options, a context menu should be attached to this navItem.
 	// The returned boolean value suggest the position of the popup menu should be at
 	// fixed position or not. NavItemStyle should place a clickable icon to guide user interactions.
-	ContextMenuOptions() ([][]menu.MenuOption, bool)
+	ContextMenuOptions(gtx layout.Context) ([][]menu.MenuOption, bool)
 	Children() []NavItem
 }
 
@@ -68,6 +68,14 @@ func (n *NavItemStyle) Unselect() {
 }
 
 func (n *NavItemStyle) Update(gtx C) bool {
+	if n.menu == nil {
+		menuOpts, fixPos := n.item.ContextMenuOptions(gtx)
+		if len(menuOpts) > 0 {
+			n.menu = menu.NewContextMenu(menuOpts, fixPos)
+			n.fixMenuPos = fixPos
+		}
+	}
+
 	// handle naviitem events
 	if n.label.Update(gtx) {
 		n.drawer.OnItemSelected(gtx, n)
@@ -185,11 +193,6 @@ func NewNavItem(item NavItem, drawer *NavDrawer) *NavItemStyle {
 		drawer:     drawer,
 		fixMenuPos: false,
 	}
-	menuOpts, fixPos := item.ContextMenuOptions()
-	if len(menuOpts) > 0 {
-		style.menu = menu.NewContextMenu(menuOpts, fixPos)
-		style.fixMenuPos = fixPos
-	}
 
 	return style
 }
@@ -218,7 +221,7 @@ func (item simpleNavItem) Layout(gtx C, th *theme.Theme, textColor color.NRGBA) 
 	return label.Layout(gtx)
 }
 
-func (item simpleNavItem) ContextMenuOptions() ([][]menu.MenuOption, bool) {
+func (item simpleNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool) {
 	return nil, false
 }
 
