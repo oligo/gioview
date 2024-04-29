@@ -53,7 +53,7 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 				//sz := 480
 				//gtx.Constraints = layout.Exact(image.Pt(sz, sz))
 				gtx.Constraints.Max.Y = 300
-				img := gioimg.NewGioImg(vw.img)
+				img := gioimg.NewImage(vw.img)
 				return img.Layout(gtx)
 			}),
 
