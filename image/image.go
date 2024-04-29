@@ -50,11 +50,8 @@ func (img *ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func (img *ImageStyle) layoutImg(gtx layout.Context) layout.Dimensions {
-	imgOp, err := img.src.ImageOp(gtx.Constraints.Max)
-	if err != nil {
-		return img.layoutEmptyImg(gtx)
-	}
-
+	imgOp := img.src.ImageOp(gtx.Constraints.Max)
+	
 	_img := widget.Image{
 		Src:      *imgOp,
 		Scale:    1.0 / gtx.Metric.PxPerDp,

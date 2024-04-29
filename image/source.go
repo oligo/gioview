@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"image"
+	"image/color"
 	"io"
 	"log"
 	"os"
@@ -16,60 +17,98 @@ import (
 // ImageSource wraps a local or remote image. Only jpeg and png format for
 // is supported. When displaying, image scaled by the specified size and cached.
 type ImageSource struct {
+	location string
 	// image data
 	src     []byte
 	srcSize image.Point
 	// The name of the registered image format, like "jpeg" or "png".
 	format string
 
+	// for network image
+	isLoading bool
+	loadErr   error
+
 	// cache the last scaled image
 	cache *paint.ImageOp
 }
 
-// ImageFromReader loads an image from a io.Reader.
-// Image bytes buffer can be wrapped using a bytes.Reader to get an
-// ImageSource.
-func ImageFromReader(src []byte) (*ImageSource, error) {
-	imgConfig, format, err := image.DecodeConfig(bytes.NewReader(src))
-	if err != nil {
-		return nil, err
-	}
-
-	return &ImageSource{
-		src:     src,
-		srcSize: image.Point{X: imgConfig.Width, Y: imgConfig.Height},
-		format:  format,
-	}, nil
+// ImageFromBuf loads an image from bytes buffer.
+func ImageFromBuf(src []byte) *ImageSource {
+	img := &ImageSource{src: src, location: "memory"}
+	img.load()
+	return img
 }
 
 // ImageFromFile load an image from local filesystem or from network.
-func ImageFromFile(src string) (*ImageSource, error) {
-	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
-		// load from remote server.
-		httpClient := newClient()
-		_, resp, err := httpClient.Download(src)
-		if err != nil {
-			return nil, err
-		}
+func ImageFromFile(src string) *ImageSource {
+	img := &ImageSource{location: src}
+	img.load()
+	return img
+}
 
-		defer resp.Close()
-
-		imgFile, err := io.ReadAll(resp)
-		if err != nil {
-			return nil, err
-		}
-
-		return ImageFromReader(imgFile)
-	}
-
-	// Try to load from the file system.
-	imgFile, err := os.ReadFile(src)
+func (img *ImageSource) loadMeta(src []byte) error {
+	imgConfig, format, err := image.DecodeConfig(bytes.NewReader(src))
 	if err != nil {
-		return nil, errors.New(err.Error())
+		return err
 	}
 
-	return ImageFromReader(imgFile)
+	img.srcSize = image.Point{X: imgConfig.Width, Y: imgConfig.Height}
+	img.format = format
+	return nil
+}
 
+// IsNetworkImg check if this image is loaded/to be loaded from network.
+func (img *ImageSource) IsNetworkImg() bool {
+	return strings.HasPrefix(img.location, "http://") || strings.HasPrefix(img.location, "https://")
+}
+
+// loads the img from network asynchronously.
+func (img *ImageSource) load() {
+	if img.location == "memory" {
+		img.loadMeta(img.src)
+		return
+	}
+
+	img.isLoading = true
+
+	go func() {
+		defer func() { img.isLoading = false }()
+		if !img.IsNetworkImg() {
+			// Try to load from the file system.
+			imgBuf, err := os.ReadFile(img.location)
+			if err != nil {
+				img.loadErr = err
+				return
+			}
+
+			img.src = imgBuf
+			img.loadErr = img.loadMeta(imgBuf)
+			return
+		} else {
+			// load from remote server.
+			httpClient := newClient()
+			_, resp, err := httpClient.Download(img.location)
+			if err != nil {
+				img.loadErr = err
+				return
+			}
+
+			defer resp.Close()
+
+			imgBuf, err := io.ReadAll(resp)
+			if err != nil {
+				img.loadErr = err
+				return
+			}
+
+			img.src = imgBuf
+			img.loadErr = img.loadMeta(imgBuf)
+		}
+	}()
+}
+
+func (img *ImageSource) Error() error {
+	return img.loadErr
 }
 
 func (img *ImageSource) ScaleBySize(size image.Point) (*paint.ImageOp, error) {
@@ -78,7 +117,7 @@ func (img *ImageSource) ScaleBySize(size image.Point) (*paint.ImageOp, error) {
 
 func (img *ImageSource) ScaleByRatio(ratio float32) (*paint.ImageOp, error) {
 	if ratio <= 0 {
-		return nil, errors.New("negative scaling ratio")
+		return nil, errors.New("invalid scaling ratio")
 	}
 
 	width, height := img.srcSize.X, img.srcSize.Y
@@ -104,15 +143,27 @@ func (img *ImageSource) scale(size image.Point) (*paint.ImageOp, error) {
 	return img.cache, nil
 }
 
+var emptyImg = paint.NewImageOp(image.NewUniform(color.Opaque))
+
 // ImageOp scales the src image to make it fit within the constraint specified by size
 // and convert it to Gio ImageOp. If size has zero value of image Point, image is not scaled.
-func (img *ImageSource) ImageOp(size image.Point) (*paint.ImageOp, error) {
+func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
+	if img.isLoading || img.loadErr != nil {
+		// log.Println("load err: ", img.loadErr)
+		return &emptyImg
+	}
+
 	if img.cache != nil {
-		return img.cache, nil
+		return img.cache
 	}
 
 	if size == (image.Point{}) || size.X <= 0 || size.Y <= 0 {
-		return img.ScaleBySize(size)
+		op, err := img.ScaleBySize(size)
+		if err != nil {
+			return &emptyImg
+		} else {
+			return op
+		}
 	}
 
 	width, height := img.srcSize.X, img.srcSize.Y
@@ -120,10 +171,10 @@ func (img *ImageSource) ImageOp(size image.Point) (*paint.ImageOp, error) {
 	scaledImg, err := img.ScaleByRatio(ratio)
 	if err != nil {
 		log.Println("scale image failed:", err)
-		return &paint.ImageOp{}, err
+		return &emptyImg
 	}
 
-	return scaledImg, nil
+	return scaledImg
 }
 
 func (img *ImageSource) Size() image.Point {

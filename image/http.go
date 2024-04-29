@@ -91,7 +91,7 @@ func (c *HttpClient) Download(location string) (string, io.ReadCloser, error) {
 	contentType := resp.Header.Get("Content-Type")
 	size, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
 	if !slices.Contains[[]string, string](allowedMIMETypes, contentType) {
-		return "", nil, fmt.Errorf("file MIME type: %s, not allowed to download", contentType)
+		return "", nil, fmt.Errorf("file MIME type %s is unsupported", contentType)
 	}
 
 	if size > MaxDownloadSize {
