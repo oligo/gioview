@@ -9,18 +9,12 @@ import (
 	"os"
 	"strings"
 
-	"image/jpeg"
-	//_ "image/jpeg"
-	"image/png"
-	//_ "image/png"
-
 	"gioui.org/op/paint"
 	"golang.org/x/image/draw"
 )
 
-// ImageSource wraps a local or remote image, and handle things like
-// scaling and converting. Only jpeg and png format for the source
-// image is supported.
+// ImageSource wraps a local or remote image. Only jpeg and png format for
+// is supported. When displaying, image scaled by the specified size and cached.
 type ImageSource struct {
 	// image data
 	src     []byte
@@ -29,7 +23,7 @@ type ImageSource struct {
 	format string
 
 	// cache the last scaled image
-	destImg image.Image
+	cache *paint.ImageOp
 }
 
 // ImageFromReader loads an image from a io.Reader.
@@ -52,7 +46,20 @@ func ImageFromReader(src []byte) (*ImageSource, error) {
 func ImageFromFile(src string) (*ImageSource, error) {
 	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
 		// load from remote server.
-		return nil, errors.New("not implemented")
+		httpClient := newClient()
+		_, resp, err := httpClient.Download(src)
+		if err != nil {
+			return nil, err
+		}
+
+		defer resp.Close()
+
+		imgFile, err := io.ReadAll(resp)
+		if err != nil {
+			return nil, err
+		}
+
+		return ImageFromReader(imgFile)
 	}
 
 	// Try to load from the file system.
@@ -65,11 +72,11 @@ func ImageFromFile(src string) (*ImageSource, error) {
 
 }
 
-func (img *ImageSource) ScaleBySize(size image.Point) (image.Image, error) {
+func (img *ImageSource) ScaleBySize(size image.Point) (*paint.ImageOp, error) {
 	return img.scale(size)
 }
 
-func (img *ImageSource) ScaleByRatio(ratio float32) (image.Image, error) {
+func (img *ImageSource) ScaleByRatio(ratio float32) (*paint.ImageOp, error) {
 	if ratio <= 0 {
 		return nil, errors.New("negative scaling ratio")
 	}
@@ -80,51 +87,32 @@ func (img *ImageSource) ScaleByRatio(ratio float32) (image.Image, error) {
 	return img.scale(size)
 }
 
-func (img *ImageSource) scale(size image.Point) (image.Image, error) {
-	if img.destImg != nil && size == img.destImg.Bounds().Size() {
-		return img.destImg, nil
+func (img *ImageSource) scale(size image.Point) (*paint.ImageOp, error) {
+	if img.cache != nil && size == img.cache.Size() {
+		return img.cache, nil
 	}
 
 	srcImg, _, err := image.Decode(bytes.NewReader(img.src))
 	if err != nil {
-		log.Println("err: ", err)
 		return nil, err
 	}
 
 	dest := image.NewRGBA(image.Rectangle{Max: size})
 	draw.NearestNeighbor.Scale(dest, dest.Bounds(), srcImg, srcImg.Bounds(), draw.Src, nil)
-	img.destImg = dest
-	return dest, nil
-}
-
-// Save scale the image if required, and encode image.Image to PNG/JPEG image, finally write
-// to the provided writer. Format must be value of "jpeg" or "png".
-func (img *ImageSource) Save(out io.Writer, format string, size image.Point) error {
-	if img.destImg == nil && size != img.destImg.Bounds().Size() {
-		img.ScaleBySize(size)
-	}
-
-	if format == "" {
-		format = img.format
-	}
-
-	if format == "jpeg" {
-		return jpeg.Encode(out, img.destImg, &jpeg.Options{Quality: 100})
-	}
-
-	if format == "png" {
-		return png.Encode(out, img.destImg)
-	}
-
-	return errors.New("unknown image format: " + format)
+	op := paint.NewImageOp(dest)
+	img.cache = &op
+	return img.cache, nil
 }
 
 // ImageOp scales the src image to make it fit within the constraint specified by size
 // and convert it to Gio ImageOp. If size has zero value of image Point, image is not scaled.
-func (img *ImageSource) ImageOp(size image.Point) (paint.ImageOp, error) {
+func (img *ImageSource) ImageOp(size image.Point) (*paint.ImageOp, error) {
+	if img.cache != nil {
+		return img.cache, nil
+	}
+
 	if size == (image.Point{}) || size.X <= 0 || size.Y <= 0 {
-		img.ScaleBySize(size)
-		return paint.NewImageOp(img.destImg), nil
+		return img.ScaleBySize(size)
 	}
 
 	width, height := img.srcSize.X, img.srcSize.Y
@@ -132,10 +120,10 @@ func (img *ImageSource) ImageOp(size image.Point) (paint.ImageOp, error) {
 	scaledImg, err := img.ScaleByRatio(ratio)
 	if err != nil {
 		log.Println("scale image failed:", err)
-		return paint.ImageOp{}, err
+		return &paint.ImageOp{}, err
 	}
 
-	return paint.NewImageOp(scaledImg), nil
+	return scaledImg, nil
 }
 
 func (img *ImageSource) Size() image.Point {
