@@ -34,8 +34,8 @@ type ImageSource struct {
 
 // ImageFromBuf loads an image from bytes buffer.
 func ImageFromBuf(src []byte) *ImageSource {
-	img := &ImageSource{src: src, location: "memory"}
-	img.load()
+	img := &ImageSource{location: "memory"}
+	img.loadData(src)
 	return img
 }
 
@@ -46,14 +46,17 @@ func ImageFromFile(src string) *ImageSource {
 	return img
 }
 
-func (img *ImageSource) loadMeta(src []byte) error {
-	imgConfig, format, err := image.DecodeConfig(bytes.NewReader(src))
+func (img *ImageSource) loadData(src []byte) error {
+	srcReader := bytes.NewReader(src)
+	imgConfig, format, err := image.DecodeConfig(srcReader)
 	if err != nil {
+		img.loadErr = err
 		return err
 	}
 
 	img.srcSize = image.Point{X: imgConfig.Width, Y: imgConfig.Height}
 	img.format = format
+	img.src = src
 	return nil
 }
 
@@ -65,7 +68,6 @@ func (img *ImageSource) IsNetworkImg() bool {
 // loads the img from network asynchronously.
 func (img *ImageSource) load() {
 	if img.location == "memory" {
-		img.loadMeta(img.src)
 		return
 	}
 
@@ -81,8 +83,7 @@ func (img *ImageSource) load() {
 				return
 			}
 
-			img.src = imgBuf
-			img.loadErr = img.loadMeta(imgBuf)
+			img.loadErr = img.loadData(imgBuf)
 			return
 		} else {
 			// load from remote server.
@@ -101,8 +102,7 @@ func (img *ImageSource) load() {
 				return
 			}
 
-			img.src = imgBuf
-			img.loadErr = img.loadMeta(imgBuf)
+			img.loadErr = img.loadData(imgBuf)
 		}
 	}()
 }
@@ -127,6 +127,10 @@ func (img *ImageSource) ScaleByRatio(ratio float32) (*paint.ImageOp, error) {
 }
 
 func (img *ImageSource) scale(size image.Point) (*paint.ImageOp, error) {
+	if size == (image.Point{}) {
+		size = img.srcSize
+	}
+
 	if img.cache != nil && size == img.cache.Size() {
 		return img.cache, nil
 	}
@@ -151,19 +155,6 @@ func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 	if img.isLoading || img.loadErr != nil {
 		// log.Println("load err: ", img.loadErr)
 		return &emptyImg
-	}
-
-	if img.cache != nil {
-		return img.cache
-	}
-
-	if size == (image.Point{}) || size.X <= 0 || size.Y <= 0 {
-		op, err := img.ScaleBySize(size)
-		if err != nil {
-			return &emptyImg
-		} else {
-			return op
-		}
 	}
 
 	width, height := img.srcSize.X, img.srcSize.Y

@@ -12,6 +12,7 @@ import (
 	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
 
@@ -52,8 +53,12 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 
 				//sz := 480
 				//gtx.Constraints = layout.Exact(image.Pt(sz, sz))
-				gtx.Constraints.Max.Y = 300
+				// gtx.Constraints.Max.X = 500
+				// gtx.Constraints.Min = gtx.Constraints.Max
 				img := gioimg.NewImage(vw.img)
+				img.Radius = unit.Dp(12)
+				img.Fit = widget.Unscaled
+				img.Position = layout.N
 				return img.Layout(gtx)
 			}),
 
@@ -131,9 +136,5 @@ func NewExampleView() view.View {
 }
 
 func loadImg() *gioimg.ImageSource {
-	img, err := gioimg.ImageFromFile("./gioui_logo.png")
-	if err != nil {
-		panic(err)
-	}
-	return img
+	return gioimg.ImageFromFile("https://cdn.pixabay.com/photo/2013/04/04/12/34/mountains-100367_1280.jpg")
 }

@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -38,23 +39,29 @@ func NewImage(src *ImageSource) *ImageStyle {
 }
 
 func (img *ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
-	size := image.Point{X: gtx.Constraints.Max.X, Y: gtx.Constraints.Max.Y}
+	macro := op.Record(gtx.Ops)
+	dims := func() layout.Dimensions {
+		if img.src == nil {
+			return img.layoutEmptyImg(gtx)
+		}
 
-	defer clip.UniformRRect(image.Rectangle{Max: size}, gtx.Dp(img.Radius)).Push(gtx.Ops).Pop()
+		dims := img.layoutImg(gtx)
+		return dims
+	}()
+	call := macro.Stop()
 
-	if img.src == nil {
-		return img.layoutEmptyImg(gtx)
-	}
+	defer clip.UniformRRect(image.Rectangle{Max: dims.Size}, gtx.Dp(img.Radius)).Push(gtx.Ops).Pop()
+	call.Add(gtx.Ops)
 
-	return img.layoutImg(gtx)
+	return dims
 }
 
 func (img *ImageStyle) layoutImg(gtx layout.Context) layout.Dimensions {
 	imgOp := img.src.ImageOp(gtx.Constraints.Max)
-	
+
 	_img := widget.Image{
 		Src:      *imgOp,
-		Scale:    1.0 / gtx.Metric.PxPerDp,
+		Scale:    0.5,
 		Fit:      img.Fit,
 		Position: img.Position,
 	}
