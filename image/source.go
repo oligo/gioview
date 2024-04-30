@@ -2,7 +2,6 @@ package image
 
 import (
 	"bytes"
-	"errors"
 	"image"
 	"image/color"
 	"io"
@@ -117,7 +116,7 @@ func (img *ImageSource) ScaleBySize(size image.Point) (*paint.ImageOp, error) {
 
 func (img *ImageSource) ScaleByRatio(ratio float32) (*paint.ImageOp, error) {
 	if ratio <= 0 {
-		return nil, errors.New("invalid scaling ratio")
+		ratio = 1.0
 	}
 
 	width, height := img.srcSize.X, img.srcSize.Y
@@ -161,7 +160,7 @@ func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 	ratio := min(float32(size.X)/float32(width), float32(size.Y)/float32(height))
 	scaledImg, err := img.ScaleByRatio(ratio)
 	if err != nil {
-		log.Println("scale image failed:", err)
+		log.Printf("scale image failed: %v", err)
 		return &emptyImg
 	}
 

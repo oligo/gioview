@@ -3,6 +3,7 @@ package navi
 import (
 	"image/color"
 	"log"
+	"slices"
 
 	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/theme"
@@ -53,6 +54,15 @@ func NewNavDrawer(vm view.ViewManager) *NavDrawer {
 func (nv *NavDrawer) AddSection(item NavSection) {
 	item.Attach(nv)
 	nv.listItems = append(nv.listItems, item)
+}
+
+func (nv *NavDrawer) InsertAt(index int, item NavSection) {
+	nv.listItems = slices.Insert(nv.listItems, index, []NavSection{item}...)
+	item.Attach(nv)
+}
+
+func (nv *NavDrawer) RemoveSection(index int) {
+	nv.listItems = slices.Delete(nv.listItems, index, index)
 }
 
 func (nv *NavDrawer) Layout(gtx C, th *theme.Theme) D {

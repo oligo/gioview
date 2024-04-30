@@ -31,13 +31,25 @@ type EntryNode struct {
 
 // Create a new file tree with a relative or absolute rootDir. Folders
 // matching prefix in any of the skipPatterns will be skipped.
-func NewFileTree(rootDir string, skipPatterns []string) (*EntryNode, error) {
+func NewFileTree(rootDir string, skipPatterns []string, lazyLoad bool) (*EntryNode, error) {
 	rootDir, err := filepath.Abs(rootDir)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	return loadTree(rootDir, skipPatterns)
+	if !lazyLoad {
+		return loadTree(rootDir, skipPatterns)
+	}
+
+	root := &EntryNode{
+		Path:         rootDir,
+		Kind:         FolderNode,
+		Parent:       nil,
+		skipPatterns: skipPatterns,
+	}
+
+	err = root.Refresh()
+	return root, err
 }
 
 // Load build the tree.
@@ -49,12 +61,13 @@ func loadTree(rootDir string, skipPatterns []string) (*EntryNode, error) {
 
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			log.Println("file/folder skipped: ", path)
+			return filepath.SkipDir
 		}
 
 		if info.IsDir() {
 			for _, prefix := range skipPatterns {
-				if strings.HasPrefix(info.Name(), prefix) {
+				if strings.HasPrefix(info.Name(), prefix) || strings.HasPrefix(path, prefix) {
 					return filepath.SkipDir
 				}
 			}
