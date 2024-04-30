@@ -61,7 +61,7 @@ func (img *ImageStyle) layoutImg(gtx layout.Context) layout.Dimensions {
 
 	_img := widget.Image{
 		Src:      *imgOp,
-		Scale:    0.5,
+		Scale:    1.0 / gtx.Metric.PxPerDp,
 		Fit:      img.Fit,
 		Position: img.Position,
 	}
