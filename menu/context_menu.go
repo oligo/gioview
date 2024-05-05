@@ -185,8 +185,6 @@ func (m *ContextMenu) Update(gtx C) {
 			gtx.Execute(key.FocusCmd{Tag: m})
 		}
 
-		log.Println("menu focused: ", gtx.Focused(m))
-
 		for {
 			e, ok := gtx.Event(
 				key.FocusFilter{Target: m},
@@ -198,8 +196,6 @@ func (m *ContextMenu) Update(gtx C) {
 				key.Filter{Focus: m, Name: key.NameReturn},
 				key.Filter{Focus: m, Name: key.NameEscape},
 			)
-
-			log.Printf("[menu event] : %v", e)
 
 			if !ok {
 				break
