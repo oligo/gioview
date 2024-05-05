@@ -2,6 +2,7 @@ package menu
 
 import (
 	"image"
+	"image/color"
 	"log"
 
 	"github.com/oligo/gioview/misc"
@@ -65,22 +66,8 @@ func NewContextMenu(options [][]MenuOption, absPosition bool) *ContextMenu {
 }
 
 func (m *ContextMenu) buildMenus(th *theme.Theme) []layout.Widget {
-	if len(m.options) <= 0 || len(m.optionStates) > 0 {
+	if len(m.options) <= 0 || (len(m.optionStates) > 0 && len(m.optionStates) == len(m.menuItems)) {
 		return nil
-	}
-
-	optionCnt := 0
-	for _, opts := range m.options {
-		optionCnt += len(opts)
-	}
-
-	if len(m.optionStates) != optionCnt {
-		m.optionStates = m.optionStates[:0]
-		for _, group := range m.options {
-			for _ = range group {
-				m.optionStates = append(m.optionStates, &widget.Clickable{})
-			}
-		}
 	}
 
 	menuItems := make([]layout.Widget, 0)
@@ -102,16 +89,14 @@ func (m *ContextMenu) buildMenus(th *theme.Theme) []layout.Widget {
 		for _, opt := range group {
 			// closure captured opt
 			opt := opt
+			if len(m.optionStates) < idx+1 {
+				m.optionStates = append(m.optionStates, &widget.Clickable{})
+			}
+
 			state := m.optionStates[idx]
 			idx++
 			menuItems = append(menuItems, func(gtx C) D {
-				if state.Clicked(gtx) {
-					m.contextArea.Dismiss()
-					opt.OnClicked()
-				}
-				return m.layoutOption(gtx, th, state, func(gtx C) D {
-					return opt.Layout(gtx, th)
-				})
+				return m.layoutOption(gtx, th, state, &opt)
 			})
 		}
 	}
@@ -120,6 +105,10 @@ func (m *ContextMenu) buildMenus(th *theme.Theme) []layout.Widget {
 }
 
 func (m *ContextMenu) Layout(gtx C, th *theme.Theme) D {
+	if len(m.options) <= 0 {
+		return D{}
+	}
+
 	m.Update(gtx)
 
 	macro := op.Record(gtx.Ops)
@@ -191,72 +180,94 @@ func (m *ContextMenu) Update(gtx C) {
 		m.optionList.List.ScrollTo(0)
 	}
 
-	for {
-		e, ok := gtx.Event(
-			key.Filter{Focus: m, Name: key.NameUpArrow},
-			key.Filter{Focus: m, Name: key.NameDownArrow},
-			key.Filter{Focus: m, Name: key.NameLeftArrow},
-			key.Filter{Focus: m, Name: key.NameRightArrow},
-			key.Filter{Focus: m, Name: key.NameEnter},
-			key.Filter{Focus: m, Name: key.NameReturn},
-		)
-
-		if !ok {
-			break
+	if m.contextArea.Active() {
+		if !gtx.Focused(m) {
+			gtx.Execute(key.FocusCmd{Tag: m})
 		}
 
-		switch e := e.(type) {
-		case key.Event:
-			log.Println("menu received key event", e)
+		log.Println("menu focused: ", gtx.Focused(m))
 
-			if e.Name == key.NameDownArrow {
-				log.Println("down arrow pressed")
+		for {
+			e, ok := gtx.Event(
+				key.FocusFilter{Target: m},
+				key.Filter{Focus: m, Name: key.NameUpArrow},
+				key.Filter{Focus: m, Name: key.NameDownArrow},
+				// key.Filter{Focus: m, Name: key.NameLeftArrow},
+				// key.Filter{Focus: m, Name: key.NameRightArrow},
+				key.Filter{Focus: m, Name: key.NameEnter},
+				key.Filter{Focus: m, Name: key.NameReturn},
+				key.Filter{Focus: m, Name: key.NameEscape},
+			)
 
-				m.focusedOption++
-				if m.focusedOption >= len(m.menuItems) {
-					m.focusedOption = 0
-				}
-				gtx.Execute(key.FocusCmd{Tag: m.optionStates[m.focusedOption]})
-				log.Println("down arrow pressed")
+			log.Printf("[menu event] : %v", e)
+
+			if !ok {
+				break
 			}
-			if e.Name == key.NameUpArrow {
-				log.Println("up arrow pressed")
 
-				m.focusedOption--
-				if m.focusedOption < 0 {
-					m.focusedOption = len(m.menuItems) - 1
+			switch e := e.(type) {
+			case key.Event:
+				// log.Println("menu received key event", e)
+				if e.Name == key.NameDownArrow && e.State == key.Release {
+					m.focusedOption++
+					if m.focusedOption >= len(m.menuItems) {
+						m.focusedOption = 0
+					}
 				}
-				gtx.Execute(key.FocusCmd{Tag: m.optionStates[m.focusedOption]})
-				log.Println("up arrow pressed")
+				if e.Name == key.NameUpArrow && e.State == key.Release {
+					m.focusedOption--
+					if m.focusedOption < 0 {
+						m.focusedOption = len(m.menuItems) - 1
+					}
+				}
+				if (e.Name == key.NameEnter || e.Name == key.NameReturn) && e.State == key.Release {
+					log.Println("enter or return key pressed")
+					if m.focusedOption >= 0 {
+						// simulate a mouse click
+						m.optionStates[m.focusedOption].Click()
+					}
+				}
 
-			}
-			if e.Name == key.NameEnter || e.Name == key.NameReturn {
-				log.Println("enter or return key pressed")
-
-				if m.focusedOption >= 0 && gtx.Focused(m.menuItems[m.focusedOption]) {
-					// simulate a mouse click
-					m.optionStates[m.focusedOption].Click()
+				if e.Name == key.NameEscape && e.State == key.Release {
+					m.contextArea.Dismiss()
 				}
 			}
 		}
+
 	}
 }
 
-func (m *ContextMenu) layoutOption(gtx C, th *theme.Theme, state *widget.Clickable, w layout.Widget) D {
+func (m *ContextMenu) layoutOption(gtx C, th *theme.Theme, state *widget.Clickable, opt *MenuOption) D {
+	if state.Clicked(gtx) {
+		m.contextArea.Dismiss()
+		opt.OnClicked()
+	}
+
 	return layout.Inset{
 		// list scrollbar on the right side has width of 10px or 20px in HiDP system ,
 		Left:   unit.Dp(10),
 		Bottom: unit.Dp(4),
 	}.Layout(gtx, func(gtx C) D {
 		return material.Clickable(gtx, state, func(gtx C) D {
-			return layout.Inset{
+			macro := op.Record(gtx.Ops)
+			dims := layout.Inset{
 				Left:   unit.Dp(20),
 				Right:  unit.Dp(20),
 				Top:    unit.Dp(2),
 				Bottom: unit.Dp(2),
 			}.Layout(gtx, func(gtx C) D {
-				return w(gtx)
+				return opt.Layout(gtx, th)
 			})
+			callOp := macro.Stop()
+
+			defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
+			if m.focusedOption >= 0 && m.focusedOption < len(m.optionStates) && m.optionStates[m.focusedOption] == state {
+				paint.ColorOp{Color: misc.WithAlpha(color.NRGBA{}, th.HoverAlpha)}.Add(gtx.Ops)
+				paint.PaintOp{}.Add(gtx.Ops)
+			}
+
+			callOp.Add(gtx.Ops)
+			return dims
 		})
 	})
 }
