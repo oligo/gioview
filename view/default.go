@@ -15,10 +15,13 @@ type defaultViewManager struct {
 	window *app.Window
 	stacks []*ViewStack
 	// views which are to be shown as modal.
-	modalStack      *ViewStack
-	currentTabIdx   int
-	views           map[ViewID]ViewProvider
-	mu              sync.Mutex
+	modalStack    *ViewStack
+	currentTabIdx int
+	views         map[ViewID]ViewProvider
+
+	// title of the window
+	currentTitle string
+	mu           sync.Mutex
 }
 
 func (vm *defaultViewManager) CurrentView() View {
@@ -28,7 +31,11 @@ func (vm *defaultViewManager) CurrentView() View {
 
 	stack := vm.stacks[vm.currentTabIdx]
 	vw := stack.Peek()
-	vm.window.Option(app.Title(vw.Title()))
+
+	if vm.currentTitle != vw.Title() {
+		vm.currentTitle = vw.Title()
+		vm.window.Option(app.Title(vm.currentTitle))
+	}
 	return vw
 }
 
@@ -59,7 +66,7 @@ func (vm *defaultViewManager) CurrentViewIndex() int {
 func (vm *defaultViewManager) Register(ID ViewID, provider ViewProvider) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
-	
+
 	if ID == (ViewID{}) {
 		return errors.New("cannot register empty view ID")
 	}
@@ -262,6 +269,6 @@ func (vm *defaultViewManager) Reset() {
 
 func DefaultViewManager(window *app.Window) ViewManager {
 	return &defaultViewManager{
-		window:          window,
+		window: window,
 	}
 }
