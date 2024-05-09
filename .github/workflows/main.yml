@@ -1,0 +1,105 @@
+name: make
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+  # Runs on PRS targeting any branch
+  pull_request:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  BASE_GWD: ${{ github.workspace }}
+  BASE_GWD_BIN: ${{ github.workspace }}/.bin
+
+jobs:
+
+  #
+  # Tests for all platforms. Runs a matrix build on Windows, Linux and Mac,
+  # with the list of expected supported Go versions (current, previous).
+  #
+
+  build:
+    name: Build and test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        go-version: [ 1.22.0 ]
+        target: [ "ci-all", ]
+    runs-on: ${{ matrix.os }}
+    steps:
+
+      # Install go: https://github.com/actions/setup-go/releases/tag/v5.0.0
+      - name: Install go
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: ${{ matrix.go-version }}
+        id: go
+
+      # Set go bin
+      #- name: Setup Go binary path
+      #  shell: bash
+      #  run: |
+      #    echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
+      #    echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      # Fix git line endings
+      - name: Git line endings
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      # Checkout code: https://github.com/actions/checkout/releases/tag/v4.1.1
+      - name: Check out main code into the Go module directory
+        uses: actions/checkout@v4.1.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+      
+      # Check workspace
+      - name: check workspace ${{ matrix.target }}
+        shell: bash
+        run: |
+          echo ${{ github.workspace }}
+          echo $GITHUB_WORKSPACE
+
+      # Build using make
+      - name: make ${{ matrix.target }}
+        shell: bash
+        run: |
+          make $target
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+        env:
+      #    CONFIG_PASSWORD: secretzSoSecureYouWontBelieveIt999
+          target: ${{ matrix.target }}
+          #          CONFIG_PASSWORD: ${{ secrets.CONFIG_PASSWORD }}
+      
+      ## Test
+      - name: Test with Go ( fake for noe )
+        shell: bash
+        run: touch test-${{ matrix.os }}.json
+
+      ## Upload other artifacts
+      - name: upload other
+        uses: actions/upload-artifact@v4
+        with:
+          name: other-${{ matrix.os }}
+          path: ${{ env.BASE_GWD_BIN }}
+
+      ## Upload bin artifacts
+      - name: upload bins
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.os }}
+          path: ${{ env.BASE_GWD_BIN }}

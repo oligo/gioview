@@ -7,6 +7,8 @@ export PATH:=$(PATH):$(BIN_ROOT)
 
 print:
 
+ci-all: bin
+
 bin:
 	mkdir -p $(BIN_ROOT)
 	cd example/basic && go build -o $(BIN_ROOT)/$(NAME) .
