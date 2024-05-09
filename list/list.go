@@ -112,30 +112,14 @@ func (sl *SelectableList) SelectionChanged(gtx C) bool {
 }
 
 func (sl *SelectableList) changeSelected(index int) bool {
-	// reset
-	if index < 0 {
-		if sl.selectedIndex >= 0 {
-			sl.listItems[sl.selectedIndex].setSelected(false)
-		}
-
-		sl.selectedIndex = -1
-		return true
-	}
-
-	if sl.selectedIndex < 0 && index >= 0 {
-		sl.selectedIndex = index
-		sl.listItems[sl.selectedIndex].setSelected(true)
-		return true
-	}
-
-	if index == sl.selectedIndex && sl.listItems[index].isSelected() {
+	if index == sl.selectedIndex {
 		return false
 	}
 
-	// when deleting the last item, the last selected index is larger than the max index of the new list items
-	if sl.selectedIndex < len(sl.listItems) {
-		sl.listItems[sl.selectedIndex].setSelected(false)
+	if sl.selectedIndex >= 0 && sl.selectedIndex < len(sl.listItems) {
+		sl.listItems[sl.selectedIndex].unselected()
 	}
+
 	sl.selectedIndex = index
 	return true
 }
@@ -163,17 +147,14 @@ func (li *ListItem) GetContent() ListContent {
 
 func (li *ListItem) Update(gtx layout.Context) bool {
 	clicked := li.label.Update(gtx)
-	if li.label.IsSelected() {
+	if clicked {
 		li.content.SetSelected(true)
-	} else {
-		li.content.SetSelected(false)
 	}
 	return clicked
 }
 
-func (li *ListItem) setSelected(selected bool) {
-	li.label.isSelected = selected
-	li.content.SetSelected(selected)
+func (li *ListItem) unselected() {
+	li.label.isSelected = false
 }
 
 func (li *ListItem) isSelected() bool {

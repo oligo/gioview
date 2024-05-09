@@ -80,7 +80,7 @@ func (l *InteractiveLabel) layoutBackground(gtx layout.Context, th *theme.Theme)
 	if l.hovering {
 		fill = misc.WithAlpha(th.Palette.Fg, th.HoverAlpha)
 	} else if l.isSelected {
-		fill = misc.WithAlpha(th.Palette.ContrastBg, uint8(255))
+		fill = misc.WithAlpha(th.Palette.Fg, th.SelectedAlpha)
 	}
 	rr := gtx.Dp(unit.Dp(4))
 	rect := clip.RRect{
@@ -103,7 +103,7 @@ func (l *InteractiveLabel) Layout(gtx C, th *theme.Theme, w func(gtx C, textColo
 	if l.hovering {
 		contentColor = th.Palette.Fg
 	} else if l.isSelected {
-		contentColor = th.Palette.ContrastFg
+		contentColor = th.Palette.Fg
 	}
 
 	macro := op.Record(gtx.Ops)

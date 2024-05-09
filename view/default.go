@@ -108,6 +108,10 @@ func (vm *defaultViewManager) HasPrev() bool {
 }
 
 func (vm *defaultViewManager) RequestSwitch(intent Intent) error {
+	// use mutex to guard the dispatching
+	vm.mu.Lock()
+	defer vm.mu.Unlock()
+
 	// Even if using a empty intent, vm refreshes the window.
 	defer vm.window.Invalidate()
 
@@ -126,14 +130,11 @@ func (vm *defaultViewManager) RequestSwitch(intent Intent) error {
 	if topVw := stack.Peek(); topVw != nil && topVw.Location() == intent.Location() {
 		targetView = topVw
 	} else {
-		// intent with RequireNew == true will provide a new view instance.
-		// And vm.route should return a new stack.
 		targetView = provider()
 		err := stack.Push(targetView)
 		if err != nil {
 			return fmt.Errorf("push to viewstack error: %w", err)
 		}
-
 	}
 
 	err := targetView.OnNavTo(intent)
@@ -157,47 +158,41 @@ func (vm *defaultViewManager) routeView(intent *Intent) *ViewStack {
 		return stack
 	}
 
+	if intent.RequireNew {
+		stack := NewViewStack()
+		vm.stacks = append(vm.stacks, stack)
+		vm.currentTabIdx = len(vm.stacks) - 1
+		return stack
+	}
+
+	// Respect referer by checking its parent view.
+	if intent.Referer != (url.URL{}) && intent.Referer == vm.CurrentView().Location() {
+		// push to current view stack
+		return vm.stacks[vm.currentTabIdx]
+	}
+
 	// Iterate through all the viewstacks to find the top view with the same location.
 	// switch to and replace the existing view.
-	var stack *ViewStack
 	for idx, s := range vm.stacks {
 		if s.Peek().Location() == intent.Location() {
 			// switch to the tab
 			vm.currentTabIdx = idx
-			stack = s
-			break
+			return s
 		}
 	}
 
-	// else if there is no target stack found, create new stack(for RequireNew) or check its parent view.
-	if stack == nil {
-		if intent.RequireNew {
-			stack := NewViewStack()
-			vm.stacks = append(vm.stacks, stack)
-			vm.currentTabIdx = len(vm.stacks) - 1
-			return stack
-		}
-		// else try to reuse existing stack.
-		// first try to match by referer:
-		if intent.Referer != (url.URL{}) && intent.Referer == vm.CurrentView().Location() {
-			// push to current view stack
-			return vm.stacks[vm.currentTabIdx]
-		}
-
-		// then try to match the viewID:
-		if intent.Target == vm.CurrentView().ID() {
-			// track the previous view
-			intent.Referer = vm.CurrentView().Location()
-			// push to current view stack
-			return vm.stacks[vm.currentTabIdx]
-		}
+	// then try to match the viewID:
+	if intent.Target == vm.CurrentView().ID() {
+		// track the previous view
+		intent.Referer = vm.CurrentView().Location()
+		// push to current view stack
+		return vm.stacks[vm.currentTabIdx]
 	}
 
-	if stack == nil {
-		stack = NewViewStack()
-		vm.stacks = append(vm.stacks, stack)
-		vm.currentTabIdx = len(vm.stacks) - 1
-	}
+	// create new stack
+	stack := NewViewStack()
+	vm.stacks = append(vm.stacks, stack)
+	vm.currentTabIdx = len(vm.stacks) - 1
 
 	return stack
 }
@@ -225,11 +220,6 @@ func (vm *defaultViewManager) OpenedViews() []View {
 }
 
 func (vm *defaultViewManager) CloseTab(idx int) {
-	// reserve the last tab
-	if len(vm.stacks) <= 1 {
-		return
-	}
-
 	if idx < 0 || idx >= len(vm.stacks) {
 		return
 	}
