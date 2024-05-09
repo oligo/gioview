@@ -182,11 +182,11 @@ func (vm *defaultViewManager) routeView(intent *Intent) *ViewStack {
 	}
 
 	// then try to match the viewID:
-	if intent.Target == vm.CurrentView().ID() {
-		// track the previous view
-		intent.Referer = vm.CurrentView().Location()
-		// push to current view stack
-		return vm.stacks[vm.currentTabIdx]
+	for idx, s := range vm.stacks {
+		if intent.Target == s.Peek().ID() {
+			vm.currentTabIdx = idx
+			return s
+		}
 	}
 
 	// create new stack
