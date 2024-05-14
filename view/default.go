@@ -158,6 +158,16 @@ func (vm *defaultViewManager) routeView(intent *Intent) *ViewStack {
 		return stack
 	}
 
+	// Iterate through all the viewstacks to find the top view with the same location.
+	// switch to and replace the existing view.
+	for idx, s := range vm.stacks {
+		if s.Peek().Location() == intent.Location() {
+			// switch to the tab
+			vm.currentTabIdx = idx
+			return s
+		}
+	}
+
 	if intent.RequireNew {
 		stack := NewViewStack()
 		vm.stacks = append(vm.stacks, stack)
@@ -169,16 +179,6 @@ func (vm *defaultViewManager) routeView(intent *Intent) *ViewStack {
 	if intent.Referer != (url.URL{}) && intent.Referer == vm.CurrentView().Location() {
 		// push to current view stack
 		return vm.stacks[vm.currentTabIdx]
-	}
-
-	// Iterate through all the viewstacks to find the top view with the same location.
-	// switch to and replace the existing view.
-	for idx, s := range vm.stacks {
-		if s.Peek().Location() == intent.Location() {
-			// switch to the tab
-			vm.currentTabIdx = idx
-			return s
-		}
 	}
 
 	// then try to match the viewID:
