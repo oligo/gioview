@@ -4,6 +4,7 @@ import (
 	//"image"
 
 	gioimg "github.com/oligo/gioview/image"
+	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/page"
 	"github.com/oligo/gioview/tabview"
 	"github.com/oligo/gioview/theme"
@@ -23,9 +24,11 @@ var (
 type ExampleView struct {
 	*view.BaseView
 	page.PageStyle
-	tabView *tabview.TabView
-	img     *gioimg.ImageSource
-	link    *view.Link
+	vm                view.ViewManager
+	horizontalTabView *tabview.TabView
+	verticalTabView   *tabview.TabView
+	img               *gioimg.ImageSource
+	showDialogBtn     widget.Clickable
 }
 
 func (vw *ExampleView) ID() view.ViewID {
@@ -38,12 +41,18 @@ func (vw *ExampleView) Title() string {
 
 func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
 	vw.Update(gtx)
+	vw.Padding = unit.Dp(30)
 	return vw.PageStyle.Layout(gtx, th, func(gtx C) D {
 		return layout.Flex{
 			Axis:      layout.Vertical,
 			Alignment: layout.Middle,
 		}.Layout(gtx,
 			layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
+
+			layout.Rigid(func(gtx C) D {
+				return material.H6(th.Theme, "1. Loading image from local filesystem or from network").Layout(gtx)
+			}),
+			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 
@@ -65,50 +74,88 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 			layout.Rigid(layout.Spacer{Height: unit.Dp(25)}.Layout),
 
 			layout.Rigid(func(gtx C) D {
-				return vw.layoutTabViews(gtx, th)
+				return material.H6(th.Theme, "2. Horizontal tab view").Layout(gtx)
 			}),
+			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
 
 			layout.Rigid(func(gtx C) D {
-				return view.NewLink(vw.link, "label").Layout(gtx, th)
+				if vw.horizontalTabView == nil {
+					vw.horizontalTabView = tabview.NewTabView(layout.Horizontal, vw.buildTabItems()...)
+				}
+				return vw.horizontalTabView.Layout(gtx, th)
 			}),
+
+			layout.Rigid(layout.Spacer{Height: unit.Dp(40)}.Layout),
+
+			layout.Rigid(func(gtx C) D {
+				return misc.Divider(layout.Horizontal, unit.Dp(0.5)).Layout(gtx, th)
+			}),
+			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
+
+			layout.Rigid(func(gtx C) D {
+				return material.H6(th.Theme, "3. Vertical tab view").Layout(gtx)
+			}),
+			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
+
+			layout.Rigid(func(gtx C) D {
+				if vw.verticalTabView == nil {
+					vw.verticalTabView = tabview.NewTabView(layout.Vertical, vw.buildTabItems()...)
+				}
+				return vw.verticalTabView.Layout(gtx, th)
+			}),
+
+			layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
+			layout.Rigid(func(gtx C) D {
+				return material.H6(th.Theme, "4. Click to open a modal view").Layout(gtx)
+			}),
+
+			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
+			layout.Rigid(func(gtx C) D {
+				if vw.showDialogBtn.Clicked(gtx) {
+					err := vw.vm.RequestSwitch(view.Intent{Target: EditorExampleViewID, ShowAsModal: true})
+					if err != nil {
+						panic(err)
+					}
+				}
+				return material.Button(th.Theme, &vw.showDialogBtn, "Click me to open a modal view").Layout(gtx)
+			}),
+
+			layout.Rigid(layout.Spacer{Height: unit.Dp(30)}.Layout),
 		)
 	})
 }
 
-func (va *ExampleView) layoutTabViews(gtx C, th *theme.Theme) D {
-	if va.tabView == nil {
-		va.tabView = tabview.NewTabView(
-			layout.Inset{
-				Left:   unit.Dp(12),
-				Right:  unit.Dp(12),
-				Top:    unit.Dp(8),
-				Bottom: unit.Dp(8),
-			},
-
-			tabview.NewTabItem("Tab 1", func(gtx C, th *theme.Theme) D {
-				return va.layoutTab(gtx, th, "Tab one")
-			}),
-
-			tabview.NewTabItem("Tab 2", func(gtx C, th *theme.Theme) D {
-				return va.layoutTab(gtx, th, "Tab two")
-			}),
-
-			tabview.NewTabItem("Tab 3", func(gtx C, th *theme.Theme) D {
-				return va.layoutTab(gtx, th, "Tab three")
-			}),
-
-			tabview.NewTabItem("Tab 4", func(gtx C, th *theme.Theme) D {
-				return va.layoutTab(gtx, th, "Tab four")
-			}),
-
-			tabview.NewTabItem("Tab 5", func(gtx C, th *theme.Theme) D {
-				return va.layoutTab(gtx, th, "Tab five")
-			}),
-		)
+func (vw *ExampleView) buildTabItems() []*tabview.TabItem {
+	inset := layout.Inset{
+		Left:   unit.Dp(12),
+		Right:  unit.Dp(12),
+		Top:    unit.Dp(8),
+		Bottom: unit.Dp(8),
 	}
 
-	va.tabView.Axis = layout.Horizontal
-	return va.tabView.Layout(gtx, th)
+	var tabItems []*tabview.TabItem
+	tabItems = append(tabItems, tabview.SimpleTabItem(inset, "Tab 1", func(gtx C, th *theme.Theme) D {
+		return vw.layoutTab(gtx, th, "Tab one")
+	}))
+
+	tabItems = append(tabItems, tabview.SimpleTabItem(inset, "A long tab name", func(gtx C, th *theme.Theme) D {
+		return vw.layoutTab(gtx, th, "Tab two")
+	}))
+
+	tabItems = append(tabItems, tabview.SimpleTabItem(inset, "Tab 3", func(gtx C, th *theme.Theme) D {
+		return vw.layoutTab(gtx, th, "Tab three")
+	}))
+
+	tabItems = append(tabItems, tabview.SimpleTabItem(inset, "Tab 4", func(gtx C, th *theme.Theme) D {
+		return vw.layoutTab(gtx, th, "Tab four")
+	}))
+
+	tabItems = append(tabItems, tabview.SimpleTabItem(inset, "Tab 5", func(gtx C, th *theme.Theme) D {
+		return vw.layoutTab(gtx, th, "Tab five")
+	}))
+
+	return tabItems
+
 }
 
 func (va *ExampleView) layoutTab(gtx C, th *theme.Theme, content string) D {
@@ -128,10 +175,10 @@ func (va *ExampleView) OnFinish() {
 	// Put your cleanup code here.
 }
 
-func NewExampleView() view.View {
+func NewExampleView(vm view.ViewManager) view.View {
 	return &ExampleView{
 		BaseView: &view.BaseView{},
-		link:     &view.Link{Src: EditorExampleViewID, Title: "This is a great link"},
+		vm:       vm,
 	}
 }
 

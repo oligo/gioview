@@ -27,9 +27,8 @@ Gio-view offers an example demonstrating its features. Clone the repository and 
 
 Screenshots of the example:
 
-![editor](./screenshots/Screenshot-2.png) 
 ![image & tabview](./screenshots/Screenshot-1.png)
-![file explorer](./screenshots/Screenshot-3.png)
+![modal view](./screenshots/Screenshot-2.png) 
 
 ## Caveats:
 
