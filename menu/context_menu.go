@@ -26,16 +26,28 @@ type (
 	D = layout.Dimensions
 )
 
+var (
+	defaultOptionInset = layout.Inset{
+		Left:   unit.Dp(30),
+		Right:  unit.Dp(30),
+		Top:    unit.Dp(6),
+		Bottom: unit.Dp(6),
+	}
+)
+
 type ContextMenu struct {
 	contextArea ContextArea
 	optionList  widget.List
-	// Inset applied around the rendered contents of the state's Options field.
-	inset         layout.Inset
+
 	options       [][]MenuOption
 	optionStates  []*widget.Clickable
 	focusedOption int
 
 	menuItems []layout.Widget
+	// Background color of the menu. If unset, bg2 of theme will be used.
+	Background color.NRGBA
+	// Inset applied around the rendered contents of the state's Options field.
+	OptionInset layout.Inset
 }
 
 type MenuOption struct {
@@ -45,10 +57,6 @@ type MenuOption struct {
 
 func NewContextMenu(options [][]MenuOption, absPosition bool) *ContextMenu {
 	m := &ContextMenu{
-		inset: layout.Inset{
-			Top:    unit.Dp(8),
-			Bottom: unit.Dp(8),
-		},
 		optionList: widget.List{
 			List: layout.List{
 				Axis: layout.Vertical,
@@ -150,7 +158,10 @@ func (m *ContextMenu) layoutOptions(gtx C, th *theme.Theme) D {
 
 	return component.Surface(th.Theme).Layout(gtx, func(gtx C) D {
 		macro := op.Record(gtx.Ops)
-		dims := m.inset.Layout(gtx, func(gtx C) D {
+		dims := layout.Inset{
+			Top:    unit.Dp(8),
+			Bottom: unit.Dp(8),
+		}.Layout(gtx, func(gtx C) D {
 			return material.List(th.Theme, &m.optionList).Layout(gtx, len(m.menuItems), func(gtx C, index int) D {
 				gtx.Constraints.Min.X = maxWidth
 				gtx.Constraints.Max.X = maxWidth
@@ -159,7 +170,11 @@ func (m *ContextMenu) layoutOptions(gtx C, th *theme.Theme) D {
 		})
 		call := macro.Stop()
 		defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
-		paint.ColorOp{Color: th.Bg2}.Add(gtx.Ops)
+		if m.Background == (color.NRGBA{}) {
+			paint.ColorOp{Color: th.Bg2}.Add(gtx.Ops)
+		} else {
+			paint.ColorOp{Color: m.Background}.Add(gtx.Ops)
+		}
 		paint.PaintOp{}.Add(gtx.Ops)
 		call.Add(gtx.Ops)
 
@@ -239,6 +254,10 @@ func (m *ContextMenu) layoutOption(gtx C, th *theme.Theme, state *widget.Clickab
 		opt.OnClicked()
 	}
 
+	if m.OptionInset == (layout.Inset{}) {
+		m.OptionInset = defaultOptionInset
+	}
+
 	return layout.Inset{
 		// list scrollbar on the right side has width of 10px or 20px in HiDP system ,
 		Left:   unit.Dp(10),
@@ -246,12 +265,7 @@ func (m *ContextMenu) layoutOption(gtx C, th *theme.Theme, state *widget.Clickab
 	}.Layout(gtx, func(gtx C) D {
 		return material.Clickable(gtx, state, func(gtx C) D {
 			macro := op.Record(gtx.Ops)
-			dims := layout.Inset{
-				Left:   unit.Dp(20),
-				Right:  unit.Dp(20),
-				Top:    unit.Dp(2),
-				Bottom: unit.Dp(2),
-			}.Layout(gtx, func(gtx C) D {
+			dims := m.OptionInset.Layout(gtx, func(gtx C) D {
 				return opt.Layout(gtx, th)
 			})
 			callOp := macro.Stop()
