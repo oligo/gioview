@@ -202,13 +202,14 @@ type simpleItemSection struct {
 }
 
 type simpleNavItem struct {
-	icon       *widget.Icon
-	name       string
-	targetView view.ViewID
+	icon        *widget.Icon
+	name        string
+	targetView  view.ViewID
+	openAsModal bool
 }
 
 func (item simpleNavItem) OnSelect(gtx C) view.Intent {
-	return view.Intent{Target: item.targetView}
+	return view.Intent{Target: item.targetView, ShowAsModal: item.openAsModal}
 }
 
 func (item simpleNavItem) Icon() *widget.Icon {
@@ -241,7 +242,7 @@ func (ss simpleItemSection) Attach(d *NavDrawer) {
 	ss.item.drawer = d
 }
 
-func SimpleItemSection(icon *widget.Icon, name string, targetView view.ViewID) NavSection {
-	item := NewNavItem(simpleNavItem{icon: icon, name: name, targetView: targetView}, nil)
+func SimpleItemSection(icon *widget.Icon, name string, targetView view.ViewID, openAsModal bool) NavSection {
+	item := NewNavItem(simpleNavItem{icon: icon, name: name, targetView: targetView, openAsModal: openAsModal}, nil)
 	return simpleItemSection{item: item}
 }

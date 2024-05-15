@@ -28,11 +28,26 @@ type (
 )
 
 var (
-	closeIcon, _ = widget.NewIcon(icons.NavigationClose)
+	closeIcon, _    = widget.NewIcon(icons.NavigationClose)
+	defaultMaxWidth = unit.Dp(600)
+	defaultPadding  = layout.Inset{
+		Top:    unit.Dp(15),
+		Bottom: unit.Dp(25),
+		Left:   unit.Dp(20),
+		Right:  unit.Dp(20),
+	}
 )
 
 type ModalView struct {
 	View
+	// padding between the modal border and inner widget. If it is not set
+	// A default value will be used.
+	Padding layout.Inset
+	// The background color of the modal area.
+	Background color.NRGBA
+	// Maximum width of the modal area.
+	MaxWidth unit.Dp
+	Radius   unit.Dp
 	//position  f32.Point
 	dims      layout.Dimensions
 	closed    bool
@@ -127,10 +142,14 @@ func (m *ModalView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimension
 		//draw at offset
 		op.Offset(offset).Add(gtx.Ops)
 		// draw the background
-		modalArea := clip.UniformRRect(image.Rectangle{Max: image.Point{m.dims.Size.X, m.dims.Size.Y}}, 8)
+		modalArea := clip.UniformRRect(image.Rectangle{Max: image.Point{m.dims.Size.X, m.dims.Size.Y}}, gtx.Dp(m.Radius))
 		stack := modalArea.Push(gtx.Ops)
 
-		paint.ColorOp{Color: th.Bg}.Add(gtx.Ops)
+		if m.Background != (color.NRGBA{}) {
+			paint.ColorOp{Color: m.Background}.Add(gtx.Ops)
+		} else {
+			paint.ColorOp{Color: th.Bg}.Add(gtx.Ops)
+		}
 		paint.PaintOp{}.Add(gtx.Ops)
 
 		contentOps.Add(gtx.Ops)
@@ -153,25 +172,29 @@ func (m *ModalView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimension
 }
 
 func (m *ModalView) layoutView(gtx layout.Context, th *theme.Theme) layout.Dimensions {
-	gtx.Constraints.Max.X = min(int(float32(gtx.Constraints.Max.X)*0.5), gtx.Dp(unit.Dp(600)))
+	if m.MaxWidth == 0 {
+		m.MaxWidth = defaultMaxWidth
+	}
+
+	if m.Padding == (layout.Inset{}) {
+		m.Padding = defaultPadding
+	}
+
+	gtx.Constraints.Max.X = min(int(float32(gtx.Constraints.Max.X)*0.75), gtx.Dp(m.MaxWidth))
 	gtx.Constraints.Max.Y = int(float32(gtx.Constraints.Max.Y) * 0.7)
 	gtx.Constraints.Min = image.Point{}
 
 	m.modalList.Axis = layout.Vertical
 
-	return layout.Inset{
-		Top:    unit.Dp(15),
-		Bottom: unit.Dp(15),
-		Left:   unit.Dp(20),
-		Right:  unit.Dp(20),
-	}.Layout(gtx, func(gtx C) D {
+	return m.Padding.Layout(gtx, func(gtx C) D {
 		return layout.Flex{
 			Axis: layout.Vertical,
 		}.Layout(gtx,
 			layout.Rigid(func(gtx C) D {
 				return m.layoutHeader(gtx, th)
 			}),
-			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
+
+			layout.Rigid(layout.Spacer{Height: unit.Dp(16)}.Layout),
 			layout.Rigid(func(gtx C) D {
 				return material.List(th.Theme, &m.modalList).Layout(gtx, 1, func(gtx C, _ int) D {
 					return layout.Inset{
@@ -191,7 +214,7 @@ func (m *ModalView) layoutHeader(gtx layout.Context, th *theme.Theme) layout.Dim
 		Axis: layout.Horizontal,
 	}.Layout(gtx,
 		layout.Flexed(1, func(gtx C) D {
-			label := material.Label(th.Theme, th.TextSize, m.View.Title())
+			label := material.H6(th.Theme, m.View.Title())
 			label.Color = cmp.WithAlpha(th.Fg, 0xb6)
 			return label.Layout(gtx)
 		}),
