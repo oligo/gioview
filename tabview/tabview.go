@@ -15,7 +15,6 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 )
@@ -41,17 +40,16 @@ type TabView struct {
 }
 
 type TabItem struct {
-	title string
-	//tabColor color.NRGBA
-	// tabWidth int
-	inset     layout.Inset
-	alignment text.Alignment
-
-	click    gesture.Click
-	hovering bool
-	selected bool
-
-	wgt func(gtx C, th *theme.Theme) D
+	// Title of the tab.
+	Title func(gtx C, th *theme.Theme) D
+	// Main part of the tab content.
+	Widget func(gtx C, th *theme.Theme) D
+	// Title padding of the tab item.
+	Inset     layout.Inset
+	alignment layout.Direction
+	click     gesture.Click
+	hovering  bool
+	selected  bool
 }
 
 func (item *TabItem) Update(gtx layout.Context) bool {
@@ -115,11 +113,10 @@ func (item *TabItem) layoutTab(gtx C, th *theme.Theme) D {
 			return item.layoutTabBackground(gtx, th)
 		},
 		func(gtx C) D {
-			return item.inset.Layout(gtx, func(gtx C) D {
-				label := material.Label(th.Theme, th.TextSize*0.9, item.title)
-				label.Font.Weight = font.Medium
-				label.Alignment = item.alignment
-				return label.Layout(gtx)
+			return item.Inset.Layout(gtx, func(gtx C) D {
+				return item.alignment.Layout(gtx, func(gtx C) D {
+					return item.Title(gtx, th)
+				})
 			})
 		},
 	)
@@ -148,7 +145,7 @@ func (item *TabItem) layoutTabBackground(gtx C, th *theme.Theme) D {
 }
 
 func (item *TabItem) LayoutWidget(gtx C, th *theme.Theme) D {
-	return item.wgt(gtx, th)
+	return item.Widget(gtx, th)
 }
 
 func (tv *TabView) Layout(gtx C, th *theme.Theme) D {
@@ -161,15 +158,15 @@ func (tv *TabView) Layout(gtx C, th *theme.Theme) D {
 	maxTabSize := tv.calculateWidth(gtx, th)
 	var direction layout.Direction
 	var flex layout.Flex
-	var tabAlign text.Alignment
+	var tabAlign layout.Direction
 	if tv.Axis == layout.Horizontal {
 		direction = layout.Center
 		flex = horizontalFlex
-		tabAlign = text.Middle
+		tabAlign = layout.Center
 	} else {
 		direction = layout.N
 		flex = verticalFlex
-		tabAlign = text.Start
+		tabAlign = layout.W
 	}
 
 	return flex.Layout(gtx,
@@ -210,7 +207,7 @@ func (tv *TabView) Layout(gtx C, th *theme.Theme) D {
 			if tv.Axis == layout.Horizontal {
 				return layout.Spacer{Height: unit.Dp(2)}.Layout(gtx)
 			} else {
-				return layout.Spacer{Width: unit.Dp(12)}.Layout(gtx)
+				return layout.Spacer{Width: unit.Dp(8)}.Layout(gtx)
 			}
 		}),
 
@@ -276,20 +273,29 @@ func (tv *TabView) calculateWidth(gtx C, th *theme.Theme) image.Point {
 	return maxSize
 }
 
-func NewTabView(inset layout.Inset, item ...*TabItem) *TabView {
-	for _, i := range item {
-		i.inset = inset
-	}
-
+func NewTabView(axis layout.Axis, item ...*TabItem) *TabView {
 	return &TabView{
-		Axis:     layout.Horizontal, //default value
+		Axis:     axis,
 		tabItems: item,
 	}
 }
 
-func NewTabItem(title string, wgt func(gtx C, th *theme.Theme) D) *TabItem {
+func NewTabItem(inset layout.Inset, title, wgt func(gtx C, th *theme.Theme) D) *TabItem {
 	return &TabItem{
-		title: title,
-		wgt:   wgt,
+		Title:  title,
+		Widget: wgt,
+		Inset:  inset,
+	}
+}
+
+func SimpleTabItem(inset layout.Inset, title string, wgt func(gtx C, th *theme.Theme) D) *TabItem {
+	return &TabItem{
+		Title: func(gtx C, th *theme.Theme) D {
+			label := material.Label(th.Theme, th.TextSize, title)
+			label.Font.Weight = font.Medium
+			return label.Layout(gtx)
+		},
+		Widget: wgt,
+		Inset:  inset,
 	}
 }
