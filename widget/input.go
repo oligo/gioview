@@ -75,7 +75,7 @@ func (in *TextField) update(gtx layout.Context, th *theme.Theme) {
 		in.Radius = unit.Dp(4)
 	}
 	if in.Padding == 0 {
-		in.Padding = unit.Dp(4)
+		in.Padding = unit.Dp(8)
 	}
 	if in.MaxChars < 0 {
 		in.MaxChars = 0
@@ -301,6 +301,13 @@ func (in *TextField) Clear() {
 // Text returns the current input text.
 func (in *TextField) Text() string {
 	return in.text
+}
+
+func (in *TextField) SetText(text string) {
+	in.changed = true
+	in.text = text
+	in.Editor.SetText(text)
+	in.errorMsg = ""
 }
 
 func (in *TextField) SetError(err string) {
