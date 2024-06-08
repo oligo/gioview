@@ -28,10 +28,10 @@ type (
 
 var (
 	defaultOptionInset = layout.Inset{
-		Left:   unit.Dp(30),
-		Right:  unit.Dp(30),
-		Top:    unit.Dp(6),
-		Bottom: unit.Dp(6),
+		Left:   unit.Dp(20),
+		Right:  unit.Dp(20),
+		Top:    unit.Dp(4),
+		Bottom: unit.Dp(4),
 	}
 )
 

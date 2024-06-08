@@ -49,16 +49,7 @@ func (ab *ActionBar) SetActions(actions []view.ViewAction, maxVisibleActions int
 	ab.actions = actions
 	ab.maxVisibleActions = maxVisibleActions
 	ab.overflowState = make([]widget.Clickable, len(ab.actions))
-	ab.overflowMenu = &overflowMenu{
-		// ModalLayer: &gvwidget.ModalLayer{
-		// 	Scrim: gvwidget.Scrim{FinalAlpha: 0xb6},
-		// 	VisibilityAnimation: cmp.VisibilityAnimation{
-		// 		State:    cmp.Invisible,
-		// 		Duration: actionAnimationDuration,
-		// 	},
-		// },
-		actionBar: ab,
-	}
+	ab.overflowMenu = &overflowMenu{actionBar: ab}
 }
 
 func (ab *ActionBar) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
@@ -159,7 +150,7 @@ func (om *overflowMenu) update(gtx C, th *theme.Theme) {
 					Spacing: layout.SpaceEnd,
 				}.Layout(gtx,
 					layout.Rigid(func(gtx C) D {
-						return misc.Icon{Icon: action.Icon, Color: th.Fg, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
+						return misc.Icon{Icon: action.Icon, Color: th.Fg, Size: unit.Dp(18)}.Layout(gtx, th)
 					}),
 					layout.Rigid(layout.Spacer{Width: unit.Dp(4)}.Layout),
 					layout.Rigid(func(gtx C) D {
