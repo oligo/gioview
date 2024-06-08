@@ -72,6 +72,7 @@ func (n *NavItemStyle) Update(gtx C) bool {
 		menuOpts, fixPos := n.item.ContextMenuOptions(gtx)
 		if len(menuOpts) > 0 {
 			n.menu = menu.NewContextMenu(menuOpts, fixPos)
+			n.menu.PositionHint = layout.N
 			n.fixMenuPos = fixPos
 		}
 	}

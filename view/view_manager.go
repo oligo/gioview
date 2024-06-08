@@ -7,6 +7,7 @@ import (
 	"github.com/oligo/gioview/theme"
 
 	"gioui.org/layout"
+	"gioui.org/widget"
 )
 
 type ViewID struct {
@@ -29,7 +30,9 @@ func (i Intent) Location() url.URL {
 }
 
 type ViewAction struct {
-	Layout func(gtx C, th *theme.Theme) D
+	Name      string
+	Icon      *widget.Icon
+	OnClicked func(gtx C)
 }
 
 type View interface {

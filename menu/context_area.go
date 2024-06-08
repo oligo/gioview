@@ -199,9 +199,8 @@ func (r *ContextArea) Dismiss() {
 	r.justDismissed = true
 }
 
-func (r *ContextArea) SetActive(position f32.Point) {
+func (r *ContextArea) SetActive() {
 	r.active = true
-	r.position = position
 }
 
 // Active returns whether the ContextArea is currently active (whether

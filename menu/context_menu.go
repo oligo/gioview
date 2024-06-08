@@ -48,6 +48,8 @@ type ContextMenu struct {
 	Background color.NRGBA
 	// Inset applied around the rendered contents of the state's Options field.
 	OptionInset layout.Inset
+	// position hint
+	PositionHint layout.Direction
 }
 
 type MenuOption struct {
@@ -184,7 +186,7 @@ func (m *ContextMenu) layoutOptions(gtx C, th *theme.Theme) D {
 }
 
 func (m *ContextMenu) Update(gtx C) {
-	m.contextArea.PositionHint = layout.N
+	m.contextArea.PositionHint = m.PositionHint
 	if m.contextArea.Activated() {
 		// let the menu be focused!
 		gtx.Execute(key.FocusCmd{Tag: m})
@@ -280,4 +282,8 @@ func (m *ContextMenu) layoutOption(gtx C, th *theme.Theme, state *widget.Clickab
 			return dims
 		})
 	})
+}
+
+func (m *ContextMenu) SetActive() {
+	m.contextArea.SetActive()
 }

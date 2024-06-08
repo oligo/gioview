@@ -118,7 +118,7 @@ func newHome(window *app.Window) *HomeView {
 
 	return &HomeView{
 		ViewManager: vm,
-		tabbar:      navi.NewTabbar(vm),
+		tabbar:      navi.NewTabbar(vm, nil),
 		sidebar:     sidebar,
 	}
 }

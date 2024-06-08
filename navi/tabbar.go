@@ -33,11 +33,17 @@ const (
 	TabClosedEvent   = TabEvent("TabClosed")
 )
 
+type TabbarOptions struct {
+	Height            unit.Dp
+	MaxVisibleActions int
+}
+
 type Tabbar struct {
 	vm       view.ViewManager
 	arrowBtn widget.Clickable
 	list     *layout.List
 	tabs     []*Tab
+	options  *TabbarOptions
 }
 
 type Tab struct {
@@ -47,6 +53,9 @@ type Tab struct {
 	isSelected bool
 	hovering   bool
 	events     []TabEvent
+
+	// action bar for the current view.
+	actionBar *ActionBar
 }
 
 func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
@@ -66,11 +75,13 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 			tb.tabs = tb.tabs[:0]
 		}
 		for _, v := range tabViews {
-			tb.tabs = append(tb.tabs, &Tab{vw: v})
+			tb.tabs = append(tb.tabs, newTab(v, tb.options.MaxVisibleActions))
 		}
 	}
 
-	for idx, v := range tb.vm.OpenedViews() {
+	var currentTab *Tab
+
+	for idx, v := range tabViews {
 		tab := tb.tabs[idx]
 		for _, evt := range tab.Update(gtx) {
 			switch evt {
@@ -84,16 +95,16 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 		// sync tab state
 		tab.isSelected = tb.vm.CurrentViewIndex() == idx
 		tab.vw = v
+		if tab.IsSelected() {
+			currentTab = tab
+		}
 	}
 
-	vw := tb.vm.CurrentView()
-
-	gtx.Constraints.Max.Y = gtx.Dp(28)
+	gtx.Constraints.Max.Y = gtx.Dp(tb.options.Height)
 	gtx.Constraints.Min = gtx.Constraints.Max
 	rect := clip.Rect(image.Rectangle{Max: gtx.Constraints.Max})
 	paint.FillShape(gtx.Ops, misc.WithAlpha(th.Bg, 0x20), rect.Op())
 
-	// return material.Body1(th.Theme, currentView.NavItem().Name).Layout(gtx)
 	return layout.Flex{
 		Axis: layout.Vertical,
 	}.Layout(gtx,
@@ -115,7 +126,7 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 						})
 					})
 				}),
-				layout.Flexed(1, func(gtx C) D {
+				layout.Flexed(0.8, func(gtx C) D {
 					// FIXME: As pointed out in this todo, layout.List does not scroll when laid out horizontally:
 					// https://todo.sr.ht/~eliasnaur/gio/530
 					return tb.list.Layout(gtx, len(tb.tabs), func(gtx C, index int) D {
@@ -123,9 +134,9 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 					})
 				}),
 
-				layout.Rigid(func(gtx C) D {
+				layout.Flexed(0.2, func(gtx C) D {
 					return layout.E.Layout(gtx, func(gtx C) D {
-						return tb.layoutActions(vw, gtx, th)
+						return tb.layoutActions(gtx, th, currentTab)
 					})
 				}),
 			)
@@ -137,23 +148,42 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 
 }
 
-func (tb *Tabbar) layoutActions(vw view.View, gtx C, th *theme.Theme) D {
-	if vw == nil || len(vw.Actions()) <= 0 {
+func (tb *Tabbar) layoutActions(gtx C, th *theme.Theme, tab *Tab) D {
+	if tab == nil || len(tab.vw.Actions()) <= 0 {
 		return layout.Dimensions{}
 	}
 
-	actionBar := &ActionBar{}
-	actionBar.SetActions(vw.Actions())
 	return layout.Inset{Right: unit.Dp(10)}.Layout(gtx, func(gtx C) D {
-		return actionBar.Layout(gtx, th)
+		return tab.actionBar.Layout(gtx, th)
 	})
 }
 
-func NewTabbar(vm view.ViewManager) *Tabbar {
-	return &Tabbar{
-		vm:   vm,
-		list: &layout.List{Axis: layout.Horizontal, Alignment: layout.Middle},
+func NewTabbar(vm view.ViewManager, options *TabbarOptions) *Tabbar {
+	tb := &Tabbar{
+		vm:      vm,
+		list:    &layout.List{Axis: layout.Horizontal, Alignment: layout.Middle},
+		options: options,
 	}
+	if options == nil {
+		tb.options = &TabbarOptions{
+			Height:            unit.Dp(28),
+			MaxVisibleActions: 999, // unlimited visible actions
+		}
+	}
+	if tb.options.Height == 0 {
+		tb.options.Height = unit.Dp(28)
+	}
+	if tb.options.MaxVisibleActions < 0 {
+		tb.options.MaxVisibleActions = 0
+	}
+
+	return tb
+}
+
+func newTab(vw view.View, maxVisibleActions int) *Tab {
+	tab := &Tab{vw: vw, actionBar: &ActionBar{}}
+	tab.actionBar.SetActions(vw.Actions(), maxVisibleActions)
+	return tab
 }
 
 func (tab *Tab) IsSelected() bool {
