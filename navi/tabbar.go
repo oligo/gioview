@@ -94,9 +94,10 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 		}
 		// sync tab state
 		tab.isSelected = tb.vm.CurrentViewIndex() == idx
-		tab.vw = v
 		if tab.IsSelected() {
 			currentTab = tab
+			// The top most view in the stack may have changed, rebind to it if necessary.
+			currentTab.bindToView(v, tb.options.MaxVisibleActions)
 		}
 	}
 
@@ -181,9 +182,19 @@ func NewTabbar(vm view.ViewManager, options *TabbarOptions) *Tabbar {
 }
 
 func newTab(vw view.View, maxVisibleActions int) *Tab {
-	tab := &Tab{vw: vw, actionBar: &ActionBar{}}
-	tab.actionBar.SetActions(vw.Actions(), maxVisibleActions)
+	tab := &Tab{vw: vw}
+	tab.bindToView(vw, maxVisibleActions)
 	return tab
+}
+
+func (tab *Tab) bindToView(vw view.View, maxVisibleActions int) {
+	if tab.vw == vw {
+		return
+	}
+
+	tab.vw = vw
+	tab.actionBar = &ActionBar{}
+	tab.actionBar.SetActions(vw.Actions(), maxVisibleActions)
 }
 
 func (tab *Tab) IsSelected() bool {
