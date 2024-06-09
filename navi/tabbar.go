@@ -182,7 +182,7 @@ func NewTabbar(vm view.ViewManager, options *TabbarOptions) *Tabbar {
 }
 
 func newTab(vw view.View, maxVisibleActions int) *Tab {
-	tab := &Tab{vw: vw}
+	tab := &Tab{}
 	tab.bindToView(vw, maxVisibleActions)
 	return tab
 }
