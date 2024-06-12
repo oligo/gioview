@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	"github.com/oligo/gioview/editor"
-	"github.com/oligo/gioview/page"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
 	"github.com/oligo/gioview/widget"
@@ -27,7 +26,6 @@ var (
 
 type EditorExample struct {
 	*view.BaseView
-	page.PageStyle
 	ed           *editor.Editor
 	patternInput widget.TextField
 }
@@ -41,44 +39,43 @@ func (vw *EditorExample) Title() string {
 }
 
 func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
-	return vw.PageStyle.Layout(gtx, th, func(gtx C) D {
-		return layout.Flex{
-			Axis:      layout.Vertical,
-			Alignment: layout.Middle,
-		}.Layout(gtx,
+	return layout.Flex{
+		Axis:      layout.Vertical,
+		Alignment: layout.Middle,
+	}.Layout(gtx,
 
-			layout.Rigid(func(gtx C) D {
-				return material.Label(th.Theme, th.TextSize, "Editor with text highlighting example").Layout(gtx)
-			}),
-			layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
+		layout.Rigid(func(gtx C) D {
+			return material.Label(th.Theme, th.TextSize, "Editor with text highlighting example").Layout(gtx)
+		}),
+		layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
 
-			layout.Rigid(func(gtx C) D {
-				vw.patternInput.Padding = unit.Dp(8)
-				vw.patternInput.HelperText = "Illustrating colored text painting in text editor."
-				vw.patternInput.MaxChars = 64
-				return vw.patternInput.Layout(gtx, th, "Regex of substring hightlighted")
-			}),
+		layout.Rigid(func(gtx C) D {
+			vw.patternInput.Padding = unit.Dp(8)
+			vw.patternInput.HelperText = "Illustrating colored text painting in text editor."
+			vw.patternInput.MaxChars = 64
+			return vw.patternInput.Layout(gtx, th, "Regex of substring hightlighted")
+		}),
 
-			layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
+		layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
 
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				editorConf := &editor.EditorConf{
-					Shaper:          th.Shaper,
-					TextColor:       th.Fg,
-					Bg:              th.Bg,
-					SelectionColor:  th.ContrastBg,
-					TypeFace:        "Go, Helvetica, Arial, sans-serif",
-					TextSize:        th.TextSize,
-					LineHeightScale: 1.6,
-					ColorScheme:     "default",
-				}
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			editorConf := &editor.EditorConf{
+				Shaper:          th.Shaper,
+				TextColor:       th.Fg,
+				Bg:              th.Bg,
+				SelectionColor:  th.ContrastBg,
+				TypeFace:        "Go, Helvetica, Arial, sans-serif",
+				TextSize:        th.TextSize,
+				LineHeightScale: 1.6,
+				ColorScheme:     "default",
+			}
 
-				vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
+			vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
 
-				return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
-			}),
-		)
-	})
+			return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
+		}),
+	)
+
 }
 
 func (va *EditorExample) OnFinish() {

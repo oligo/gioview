@@ -127,8 +127,10 @@ func (in *TextField) init() {
 		in.editor.Mask = in.Mask
 	}
 
-	// Enable submit by default.
-	in.editor.Submit = true
+	// Enable submit if editor is single line.
+	if in.SingleLine {
+		in.editor.Submit = true
+	}
 }
 
 func (in *TextField) update(gtx layout.Context, th *theme.Theme) {
@@ -411,6 +413,10 @@ func (in *TextField) Changed() bool {
 }
 
 func (in *TextField) Submitted() bool {
+	// submit is disabled.
+	if !in.editor.Submit {
+		return false
+	}
 	submitted := in.submitted
 	in.submitted = false
 	in.changed = false

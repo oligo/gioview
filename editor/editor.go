@@ -62,8 +62,8 @@ type Editor struct {
 	textStyles []*TextStyle
 	// scratch is a byte buffer that is reused to efficiently read portions of text
 	// from the textView.
-	scratch      []byte
-	blinkStart   time.Time
+	scratch    []byte
+	blinkStart time.Time
 
 	// ime tracks the state relevant to input methods.
 	ime struct {
@@ -604,9 +604,9 @@ func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.Call
 		e.scrollCaret = false
 		e.text.ScrollToCaret()
 	}
-	visibleDims := e.text.Dimensions()
+	// visibleDims := e.text.Dimensions()
 
-	defer clip.Rect(image.Rectangle{Max: visibleDims.Size}).Push(gtx.Ops).Pop()
+	defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Max}).Push(gtx.Ops).Pop()
 	pointer.CursorText.Add(gtx.Ops)
 	event.Op(gtx.Ops, e)
 	key.InputHintOp{Tag: e, Hint: e.InputHint}.Add(gtx.Ops)
@@ -635,7 +635,7 @@ func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.Call
 	if gtx.Enabled() {
 		e.paintCaret(gtx, textMaterial)
 	}
-	return visibleDims
+	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
 
 // paintSelection paints the contrasting background for selected text using the provided
