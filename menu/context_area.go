@@ -199,10 +199,6 @@ func (r *ContextArea) Dismiss() {
 	r.justDismissed = true
 }
 
-func (r *ContextArea) SetActive() {
-	r.active = true
-}
-
 // Active returns whether the ContextArea is currently active (whether
 // it is currently displaying overlaid content or not).
 func (r ContextArea) Active() bool {

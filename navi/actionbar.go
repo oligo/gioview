@@ -2,7 +2,6 @@ package navi
 
 import (
 	"image"
-	"time"
 
 	"github.com/oligo/gioview/menu"
 	"github.com/oligo/gioview/misc"
@@ -16,10 +15,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-)
-
-const (
-	actionAnimationDuration = time.Millisecond * 250
 )
 
 var (
@@ -40,7 +35,7 @@ type ActionBar struct {
 // overflowMenu holds the state for an overflow menu in an app bar.
 type overflowMenu struct {
 	// *gvwidget.ModalLayer
-	*menu.ContextMenu
+	*menu.DropdownMenu
 	actionBar    *ActionBar
 	lastMenuSize int
 }
@@ -95,7 +90,7 @@ func (ab *ActionBar) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensio
 		actions = append(actions, layout.Rigid(func(gtx C) D {
 			dims := actionButtonInset.Layout(gtx, func(gtx C) D {
 				if ab.overflowBtn.Clicked(gtx) {
-					ab.overflowMenu.ContextMenu.SetActive()
+					ab.overflowMenu.ToggleVisibility(gtx)
 				}
 				return misc.IconButton(th, vertMoreIcon, &ab.overflowBtn, "click to show more actions").Layout(gtx)
 			})
@@ -163,9 +158,8 @@ func (om *overflowMenu) update(gtx C, th *theme.Theme) {
 		})
 	}
 
-	om.ContextMenu = menu.NewContextMenu([][]menu.MenuOption{options}, true)
-	om.ContextMenu.Background = misc.WithAlpha(th.Fg, th.HoverAlpha)
-	// om.ContextMenu.PositionHint = layout.N
+	om.DropdownMenu = menu.NewDropdownMenu([][]menu.MenuOption{options})
+	om.DropdownMenu.Background = misc.WithAlpha(th.Fg, th.HoverAlpha)
 	om.lastMenuSize = om.actionBar.overflowedItems
 }
 
@@ -182,7 +176,7 @@ func (om *overflowMenu) Layout(gtx C, th *theme.Theme, pos image.Point) D {
 	gtx.Constraints.Max.Y = 1e6
 	gtx.Constraints.Max.X = max(pos.X, gtx.Dp(unit.Dp(125)))
 	macro := op.Record(gtx.Ops)
-	dims := om.ContextMenu.Layout(gtx, th)
+	dims := om.DropdownMenu.Layout(gtx, th)
 	call := macro.Stop()
 
 	offset := image.Point{

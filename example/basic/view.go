@@ -4,11 +4,13 @@ import (
 	//"image"
 
 	gioimg "github.com/oligo/gioview/image"
+	"github.com/oligo/gioview/menu"
 	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/page"
 	"github.com/oligo/gioview/tabview"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
+	"golang.org/x/exp/shiny/materialdesign/icons"
 
 	"gioui.org/font"
 	"gioui.org/layout"
@@ -21,6 +23,12 @@ var (
 	ExampleViewID = view.NewViewID("Example")
 )
 
+var (
+	infoIcon, _    = widget.NewIcon(icons.ActionInfoOutline)
+	tocIcon, _     = widget.NewIcon(icons.ActionTOC)
+	historyIcon, _ = widget.NewIcon(icons.ActionHistory)
+)
+
 type ExampleView struct {
 	*view.BaseView
 	page.PageStyle
@@ -29,6 +37,8 @@ type ExampleView struct {
 	verticalTabView   *tabview.TabView
 	img               *gioimg.ImageSource
 	showDialogBtn     widget.Clickable
+	showMenuBtn       widget.Clickable
+	menu              *menu.DropdownMenu
 }
 
 func (vw *ExampleView) ID() view.ViewID {
@@ -37,6 +47,26 @@ func (vw *ExampleView) ID() view.ViewID {
 
 func (vw *ExampleView) Title() string {
 	return "Tabviews & Image"
+}
+
+func (vw *ExampleView) Actions() []view.ViewAction {
+	return []view.ViewAction{
+		{
+			Name:      "Info",
+			Icon:      infoIcon,
+			OnClicked: func(gtx C) {},
+		},
+		{
+			Name:      "TOC",
+			Icon:      tocIcon,
+			OnClicked: func(gtx C) {},
+		},
+		{
+			Name:      "History",
+			Icon:      historyIcon,
+			OnClicked: func(gtx C) {},
+		},
+	}
 }
 
 func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
@@ -118,6 +148,57 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 					}
 				}
 				return material.Button(th.Theme, &vw.showDialogBtn, "Click me to open a modal view").Layout(gtx)
+			}),
+			layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
+
+			layout.Rigid(func(gtx C) D {
+				return material.H6(th.Theme, "5. Click to open a menu").Layout(gtx)
+			}),
+			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
+
+			layout.Rigid(func(gtx C) D {
+				if vw.menu == nil {
+					vw.menu = menu.NewDropdownMenu([][]menu.MenuOption{
+						{
+							menu.MenuOption{
+								OnClicked: func() error { return nil },
+								Layout: func(gtx C, th *theme.Theme) D {
+									return material.Label(th.Theme, th.TextSize, "Item 1").Layout(gtx)
+								},
+							},
+							menu.MenuOption{
+								OnClicked: func() error { return nil },
+								Layout: func(gtx C, th *theme.Theme) D {
+									return material.Label(th.Theme, th.TextSize, "Item 2").Layout(gtx)
+								},
+							},
+						},
+						{
+							menu.MenuOption{
+								OnClicked: func() error { return nil },
+								Layout: func(gtx C, th *theme.Theme) D {
+									return material.Label(th.Theme, th.TextSize, "Item 3").Layout(gtx)
+								},
+							},
+							menu.MenuOption{
+								OnClicked: func() error { return nil },
+								Layout: func(gtx C, th *theme.Theme) D {
+									return material.Label(th.Theme, th.TextSize, "Item 4").Layout(gtx)
+								},
+							},
+						},
+					})
+				}
+
+				if vw.showMenuBtn.Clicked(gtx) {
+					vw.menu.ToggleVisibility(gtx)
+				}
+
+				return layout.Center.Layout(gtx, func(gtx C) D {
+					dims := material.Button(th.Theme, &vw.showMenuBtn, "Click me to open menu").Layout(gtx)
+					vw.menu.Layout(gtx, th)
+					return dims
+				})
 			}),
 
 			layout.Rigid(layout.Spacer{Height: unit.Dp(30)}.Layout),
