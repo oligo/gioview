@@ -139,6 +139,7 @@ func (vm *defaultViewManager) RequestSwitch(intent Intent) error {
 
 	err := targetView.OnNavTo(intent)
 	if err != nil {
+		stack.Pop()
 		return fmt.Errorf("error handling intent: %w", err)
 	}
 
@@ -203,7 +204,6 @@ func (vm *defaultViewManager) route(intent *Intent) *ViewStack {
 		if vm.modalStack == nil {
 			vm.modalStack = NewViewStack()
 		}
-		log.Println("routing to modal stack")
 		return vm.modalStack
 	}
 
