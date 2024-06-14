@@ -267,7 +267,7 @@ func (m *Menu) layoutOption(gtx C, th *theme.Theme, state *widget.Clickable, opt
 
 			defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
 			if m.focusedOption >= 0 && m.focusedOption < len(m.optionStates) && m.optionStates[m.focusedOption] == state {
-				paint.ColorOp{Color: misc.WithAlpha(color.NRGBA{}, th.HoverAlpha)}.Add(gtx.Ops)
+				paint.ColorOp{Color: misc.WithAlpha(th.Fg, th.HoverAlpha)}.Add(gtx.Ops)
 				paint.PaintOp{}.Add(gtx.Ops)
 			}
 

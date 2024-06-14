@@ -127,6 +127,9 @@ func (om *overflowMenu) actionForIndex(index int) view.ViewAction {
 }
 
 func (om *overflowMenu) update(gtx C, th *theme.Theme) {
+	if om.DropdownMenu != nil {
+		om.DropdownMenu.Background = misc.WithAlpha(th.Fg, th.HoverAlpha)
+	}
 	if om.lastMenuSize == om.actionBar.overflowedItems {
 		return
 	}

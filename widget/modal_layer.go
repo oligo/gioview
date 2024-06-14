@@ -9,7 +9,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
-	"gioui.org/op/paint"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
 )
@@ -18,9 +17,7 @@ import (
 // by other components with dismissble modal dialogs.
 type ModalLayer struct {
 	component.VisibilityAnimation
-	// FinalAlpha is the final opacity of the scrim on a scale from 0 to 255.
-	FinalAlpha uint8
-	Widget     func(gtx layout.Context, th *material.Theme, anim *component.VisibilityAnimation) layout.Dimensions
+	Widget func(gtx layout.Context, th *material.Theme, anim *component.VisibilityAnimation) layout.Dimensions
 }
 
 const defaultModalAnimationDuration = time.Millisecond * 250
@@ -30,7 +27,6 @@ func NewModal() *ModalLayer {
 	m := ModalLayer{}
 	m.VisibilityAnimation.State = component.Invisible
 	m.VisibilityAnimation.Duration = defaultModalAnimationDuration
-	m.FinalAlpha = 82 //default
 	return &m
 }
 
@@ -48,16 +44,6 @@ func (m *ModalLayer) Layout(gtx layout.Context, th *material.Theme) layout.Dimen
 		macro := op.Record(gtx.Ops)
 		pr := clip.Rect(image.Rectangle{Min: image.Point{-1e6, -1e6}, Max: image.Point{1e6, 1e6}})
 		stack := pr.Push(gtx.Ops)
-
-		currentAlpha := m.FinalAlpha
-		if m.Animating() {
-			revealed := m.Revealed(gtx)
-			currentAlpha = uint8(float32(m.FinalAlpha) * revealed)
-		}
-		color := th.Fg
-		color.A = currentAlpha
-		paint.ColorOp{Color: color}.Add(gtx.Ops)
-		paint.PaintOp{}.Add(gtx.Ops)
 		event.Op(gtx.Ops, m)
 		stack.Pop()
 		return macro.Stop()
@@ -72,8 +58,13 @@ func (m *ModalLayer) Layout(gtx layout.Context, th *material.Theme) layout.Dimen
 
 		modalAreaOps := func() op.CallOp {
 			macro := op.Record(gtx.Ops)
-			// draw the background
-			modalArea := clip.Rect{Max: image.Point{dims.Size.X, dims.Size.Y}}
+			var modalArea clip.Rect
+			if m.Animating() {
+				revealed := m.Revealed(gtx)
+				modalArea = clip.Rect{Max: image.Point{dims.Size.X, int(float32(dims.Size.Y) * revealed)}}
+			} else {
+				modalArea = clip.Rect{Max: image.Point{dims.Size.X, dims.Size.Y}}
+			}
 			stack := modalArea.Push(gtx.Ops)
 			contentOps.Add(gtx.Ops)
 			stack.Pop()
