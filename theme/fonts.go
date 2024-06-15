@@ -6,12 +6,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"gioui.org/font"
 	"gioui.org/font/gofont"
 	"gioui.org/font/opentype"
 	"gioui.org/text"
 )
+
+var fontExts = []string{".otf", ".otc", ".ttf", ".ttc"}
 
 // LoadBuiltin loads fonts from the belowing sources:
 // 1. The provided dir.
@@ -59,7 +62,7 @@ func loadFromFs(fontDir string) []font.FontFace {
 			continue
 		}
 		filename := entry.Name()
-		if filepath.Ext(filename) != ".ttf" {
+		if !slices.Contains(fontExts, filepath.Ext(filename)) {
 			continue
 		}
 		ttfData, err := os.ReadFile(filepath.Join(fontDir, filename))
