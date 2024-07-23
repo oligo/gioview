@@ -364,6 +364,14 @@ func (e *Editor) processKey(gtx layout.Context) (EditorEvent, bool) {
 			if !gtx.Focused(e) || ke.State != key.Press {
 				break
 			}
+			if !e.ReadOnly && e.Submit && (ke.Name == key.NameReturn || ke.Name == key.NameEnter) {
+				if !ke.Modifiers.Contain(key.ModShift) {
+					e.scratch = e.text.Text(e.scratch)
+					return SubmitEvent{
+						Text: string(e.scratch),
+					}, true
+				}
+			}
 			e.scrollCaret = true
 			e.scroller.Stop()
 			ev, ok := e.command(gtx, ke)
