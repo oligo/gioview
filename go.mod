@@ -3,8 +3,8 @@ module github.com/oligo/gioview
 go 1.21.4
 
 require (
-	gioui.org v0.7.0
-	gioui.org/x v0.7.0
+	gioui.org v0.7.1
+	gioui.org/x v0.7.1
 	github.com/go-text/typesetting v0.1.1
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37
