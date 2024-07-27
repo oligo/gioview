@@ -3,6 +3,8 @@
 package editor
 
 import (
+	"fmt"
+	"image"
 	"image/color"
 
 	"gioui.org/font"
@@ -12,6 +14,8 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
+	"github.com/oligo/gioview/theme"
 )
 
 type EditorStyle struct {
@@ -34,6 +38,10 @@ type EditorStyle struct {
 	Editor         *Editor
 
 	shaper *text.Shaper
+}
+
+type LineNumberBar struct {
+	Positions []*LineInfo
 }
 
 type EditorConf struct {
@@ -102,6 +110,20 @@ func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {
 	if e.Editor.Len() == 0 {
 		call.Add(gtx.Ops)
 	}
+	return dims
+}
+
+func (bar LineNumberBar) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
+	dims := layout.Dimensions{Size: image.Point{X: gtx.Constraints.Min.X}}
+
+	// macro := op.Record(gtx.Ops)
+	for _, pos := range bar.Positions {
+		stack := op.Offset(image.Point{Y: pos.YOffset}).Push(gtx.Ops)
+		d := material.Label(th.Theme, th.TextSize, fmt.Sprintf("%d", pos.LineNum)).Layout(gtx)
+		dims.Size = image.Point{X: max(dims.Size.X, d.Size.X), Y: dims.Size.Y + d.Size.Y}
+		stack.Pop()
+	}
+
 	return dims
 }
 

@@ -193,6 +193,53 @@ func (e *textView) closestToXYGraphemes(x fixed.Int26_6, y int) combinedPos {
 	}
 }
 
+// getVisibleLines finds all visible physical line positions in the viewport.
+func (e *textView) getVisibleLines() ([]combinedPos, error) {
+	if e.viewSize.Y <= 0 {
+		return nil, nil
+	}
+
+	firstPos := e.closestToXYGraphemes(0, e.scrollOff.Y)
+	lastPos := e.closestToXYGraphemes(0, e.viewSize.Y+e.scrollOff.Y)
+
+	linePos := make([]combinedPos, 0)
+	// check the succeeding screen lines
+	pos := firstPos
+
+	buf := make([]byte, 1)
+	for pos.lineCol.line <= lastPos.lineCol.line {
+		var r rune
+		var err error
+		if pos.lineCol.line == 0 {
+			linePos = append(linePos, pos)
+		} else {
+			r, _, err = e.ReadRuneBefore(int64(e.runeOffset(pos.runes)))
+			if err != nil {
+				return nil, err
+			}
+
+			if r == rune('\n') {
+				linePos = append(linePos, pos)
+			}
+		}
+
+		if pos.lineCol.line >= lastPos.lineCol.line {
+			break
+		}
+
+		e.rr.ReadAt(buf, int64(pos.runes))
+
+		// check the next line
+		pos = e.index.closestToLineCol(screenPos{line: pos.lineCol.line + 1, col: pos.lineCol.col})
+	}
+
+	return linePos, nil
+}
+
+func (e *textView) lastVisibleLineEndPos() combinedPos {
+	return e.closestToXYGraphemes(fixed.Int26_6(e.viewSize.X), e.viewSize.Y+e.scrollOff.Y)
+}
+
 func absFixed(i fixed.Int26_6) fixed.Int26_6 {
 	if i < 0 {
 		return -i

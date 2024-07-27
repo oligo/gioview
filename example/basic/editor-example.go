@@ -58,21 +58,37 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 
 		layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
 
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			editorConf := &editor.EditorConf{
-				Shaper:          th.Shaper,
-				TextColor:       th.Fg,
-				Bg:              th.Bg,
-				SelectionColor:  th.ContrastBg,
-				TypeFace:        "Go, Helvetica, Arial, sans-serif",
-				TextSize:        th.TextSize,
-				LineHeightScale: 1.6,
-				ColorScheme:     "default",
-			}
+		layout.Rigid(func(gtx C) D {
+			return layout.Flex{
+				Axis:      layout.Horizontal,
+				Alignment: layout.Start,
+			}.Layout(gtx,
+				layout.Rigid(func(gtx C) D {
+					lines, _ := vw.ed.VisibleLines()
+					return editor.LineNumberBar{
+						Positions: lines,
+					}.Layout(gtx, th)
+				}),
 
-			vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
+				layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
 
-			return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					editorConf := &editor.EditorConf{
+						Shaper:          th.Shaper,
+						TextColor:       th.Fg,
+						Bg:              th.Bg,
+						SelectionColor:  th.ContrastBg,
+						TypeFace:        "Go, Helvetica, Arial, sans-serif",
+						TextSize:        th.TextSize,
+						LineHeightScale: 1.6,
+						ColorScheme:     "default",
+					}
+
+					vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
+
+					return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
+				}),
+			)
 		}),
 	)
 
@@ -119,7 +135,7 @@ func stylingText(text string, pattern string) []*editor.TextStyle {
 }
 
 var sampleText = `
-🥳🧁🍰🎁🎂🎈🎺🎉🎊
-📧〽️🧿🌶️🔋
-Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go. It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a more user-friendly experience for developers new to Gio.
+Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go.
+It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a 
+more user-friendly experience for developers new to Gio.
 `
