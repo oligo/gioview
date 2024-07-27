@@ -4,6 +4,7 @@
 package editor
 
 import (
+	"errors"
 	"image"
 	"io"
 	"math"
@@ -110,6 +111,17 @@ type imeState struct {
 }
 
 type selectionAction int
+
+type LineInfo struct {
+	// line number starting from 1.
+	LineNum int
+	// offset in the cross axis.
+	YOffset int
+	// offset of the start rune the line.
+	Start int
+	// offset of the end rune the line.
+	End int
+}
 
 const (
 	selectionExtend selectionAction = iota
@@ -1069,6 +1081,57 @@ func (e *Editor) ScrollByRatio(gtx layout.Context, ratio float32) {
 
 func (e *Editor) UpdateTextStyles(styles []*TextStyle) {
 	e.textStyles = styles
+}
+
+func (e *Editor) VisibleLines() ([]*LineInfo, error) {
+	linePos, err := e.text.getVisibleLines()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(linePos) <= 0 {
+		return nil, errors.New("no lines found")
+	}
+
+	lines := make([]*LineInfo, 0)
+
+	for idx, line := range linePos {
+		//log.Printf("line[%d], y offset: %d, x offset: %d", line.lineCol.line, line.y, line.x.Ceil())
+
+		if idx == 0 {
+			if line.lineCol.line == 0 {
+				lines = append(lines, &LineInfo{
+					LineNum: 1,
+					YOffset: line.y,
+					Start:   0,
+				})
+			} else {
+				startLine := e.buffer.countLinesBeforeOffset(int64(e.text.runeOffset(line.runes)))
+				lines = append(lines, &LineInfo{
+					LineNum: startLine,
+					YOffset: line.y,
+					Start:   line.runes,
+				})
+			}
+
+			continue
+		}
+
+		// update the end position of the last line.
+		lines[idx-1].End = line.runes
+
+		lines = append(lines, &LineInfo{
+			LineNum: lines[idx-1].LineNum + 1,
+			YOffset: line.y,
+			Start:   line.runes,
+		})
+
+		if idx == len(linePos)-1 {
+			lines[idx].End = e.text.lastVisibleLineEndPos().runes
+		}
+	}
+
+	return lines, nil
 }
 
 func max(a, b int) int {
