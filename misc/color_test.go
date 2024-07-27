@@ -1,6 +1,8 @@
 package misc
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestHex2RGBA(t *testing.T) {
 	hex1 := "#4B0082"
@@ -10,4 +12,12 @@ func TestHex2RGBA(t *testing.T) {
 		t.Fail()
 	}
 
+}
+
+func TestBuffer(t *testing.T) {
+	buf := []int{1, 2, 3, 0, 0, 0, 4, 5, 6}
+
+	copy(buf[2:], buf[5:6+3])
+
+	t.Log(buf)
 }
