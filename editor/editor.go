@@ -1094,22 +1094,19 @@ func (e *Editor) VisibleLines() ([]*LineInfo, error) {
 	}
 
 	lines := make([]*LineInfo, 0)
-
 	for idx, line := range linePos {
-		//log.Printf("line[%d], y offset: %d, x offset: %d", line.lineCol.line, line.y, line.x.Ceil())
-
 		if idx == 0 {
 			if line.lineCol.line == 0 {
 				lines = append(lines, &LineInfo{
 					LineNum: 1,
-					YOffset: line.y,
-					Start:   0,
+					YOffset: line.y - line.ascent.Ceil(),
+					Start:   line.runes,
 				})
 			} else {
 				startLine := e.buffer.countLinesBeforeOffset(int64(e.text.runeOffset(line.runes)))
 				lines = append(lines, &LineInfo{
-					LineNum: startLine,
-					YOffset: line.y,
+					LineNum: startLine + 1,
+					YOffset: line.y - e.text.ScrollOff().Y - line.ascent.Ceil(),
 					Start:   line.runes,
 				})
 			}
@@ -1122,7 +1119,7 @@ func (e *Editor) VisibleLines() ([]*LineInfo, error) {
 
 		lines = append(lines, &LineInfo{
 			LineNum: lines[idx-1].LineNum + 1,
-			YOffset: line.y,
+			YOffset: line.y - e.text.ScrollOff().Y - line.ascent.Ceil(),
 			Start:   line.runes,
 		})
 
