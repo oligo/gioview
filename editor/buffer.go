@@ -132,9 +132,8 @@ func (e *editBuffer) prepend(caret int, s string) {
 
 func (e *editBuffer) countLinesBeforeOffset(byteOffset int64) int {
 	cnt := 0
-	
-	
-	if byteOffset>= int64(len(e.text)) {
+
+	if byteOffset >= int64(len(e.text)) {
 		byteOffset = int64(len(e.text))
 	}
 

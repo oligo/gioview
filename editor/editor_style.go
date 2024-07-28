@@ -14,8 +14,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
-	"gioui.org/widget/material"
-	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/misc"
 )
 
 type EditorStyle struct {
@@ -40,8 +39,15 @@ type EditorStyle struct {
 	shaper *text.Shaper
 }
 
-type LineNumberBar struct {
-	Positions []*LineInfo
+type lineNumberBar struct {
+	shaper          *text.Shaper
+	lineHeight      unit.Sp
+	lineHeightScale float32
+	// Color is the text color.
+	color     color.NRGBA
+	typeFace  font.Typeface
+	textSize  unit.Sp
+	positions []*LineInfo
 }
 
 type EditorConf struct {
@@ -106,22 +112,80 @@ func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {
 	}
 	e.Editor.LineHeight = e.LineHeight
 	e.Editor.LineHeightScale = e.LineHeightScale
-	dims = e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor)
-	if e.Editor.Len() == 0 {
-		call.Add(gtx.Ops)
-	}
+
+	dims = layout.Flex{
+		Axis: layout.Horizontal,
+	}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			lines, _ := e.Editor.VisibleLines()
+			return lineNumberBar{
+				shaper:          e.shaper,
+				lineHeight:      e.LineHeight,
+				lineHeightScale: e.LineHeightScale,
+				color:           misc.WithAlpha(e.Color, 0xb6),
+				typeFace:        e.Font.Typeface,
+				textSize:        e.TextSize,
+				positions:       lines,
+			}.Layout(gtx)
+		}),
+
+		layout.Rigid(layout.Spacer{Width: unit.Dp(20)}.Layout),
+
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			d := e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor)
+			if e.Editor.Len() == 0 {
+				call.Add(gtx.Ops)
+			}
+			return d
+		}),
+	)
+
 	return dims
 }
 
-func (bar LineNumberBar) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
+func (bar lineNumberBar) layoutLine(gtx layout.Context, pos *LineInfo, textColor op.CallOp) layout.Dimensions {
+	stack := op.Offset(image.Point{Y: pos.YOffset}).Push(gtx.Ops)
+
+	tl := widget.Label{
+		Alignment:       text.End,
+		MaxLines:        1,
+		LineHeight:      bar.lineHeight,
+		LineHeightScale: bar.lineHeightScale,
+	}
+
+	d := tl.Layout(gtx, bar.shaper,
+		font.Font{Typeface: bar.typeFace, Weight: font.Normal},
+		bar.textSize,
+		fmt.Sprintf("%d", pos.LineNum),
+		textColor)
+	stack.Pop()
+	return d
+}
+
+func (bar lineNumberBar) Layout(gtx layout.Context) layout.Dimensions {
 	dims := layout.Dimensions{Size: image.Point{X: gtx.Constraints.Min.X}}
 
-	// macro := op.Record(gtx.Ops)
-	for _, pos := range bar.Positions {
-		stack := op.Offset(image.Point{Y: pos.YOffset}).Push(gtx.Ops)
-		d := material.Label(th.Theme, th.TextSize, fmt.Sprintf("%d", pos.LineNum)).Layout(gtx)
-		dims.Size = image.Point{X: max(dims.Size.X, d.Size.X), Y: dims.Size.Y + d.Size.Y}
-		stack.Pop()
+	textColorMacro := op.Record(gtx.Ops)
+	paint.ColorOp{Color: bar.color}.Add(gtx.Ops)
+	textColor := textColorMacro.Stop()
+
+	fake := gtx
+	fake.Ops = &op.Ops{}
+
+	maxWidth := 0
+	{
+		for _, pos := range bar.positions {
+			d := bar.layoutLine(fake, pos, textColor)
+			maxWidth = max(maxWidth, d.Size.X)
+		}
+
+	}
+
+	gtx.Constraints.Max.X = maxWidth
+	gtx.Constraints.Min.X = gtx.Constraints.Max.X
+	for _, pos := range bar.positions {
+		d := bar.layoutLine(gtx, pos, textColor)
+		dims.Size = image.Point{X: maxWidth, Y: dims.Size.Y + d.Size.Y}
 	}
 
 	return dims
