@@ -206,7 +206,6 @@ func (e *textView) getVisibleLines() ([]combinedPos, error) {
 	// check the succeeding screen lines
 	pos := firstPos
 
-	buf := make([]byte, 1)
 	for pos.lineCol.line <= lastPos.lineCol.line {
 		var r rune
 		var err error
@@ -226,8 +225,6 @@ func (e *textView) getVisibleLines() ([]combinedPos, error) {
 		if pos.lineCol.line >= lastPos.lineCol.line {
 			break
 		}
-
-		e.rr.ReadAt(buf, int64(pos.runes))
 
 		// check the next line
 		pos = e.index.closestToLineCol(screenPos{line: pos.lineCol.line + 1, col: pos.lineCol.col})

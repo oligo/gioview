@@ -35,6 +35,7 @@ type EditorStyle struct {
 	// SelectionColor is the color of the background for selected text.
 	SelectionColor color.NRGBA
 	Editor         *Editor
+	ShowLineNum    bool
 
 	shaper *text.Shaper
 }
@@ -65,7 +66,7 @@ type EditorConf struct {
 	ColorScheme string
 }
 
-func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
+func NewEditor(editor *Editor, conf *EditorConf, showLineNum bool, hint string) EditorStyle {
 	return EditorStyle{
 		Editor: editor,
 		Font: font.Font{
@@ -79,6 +80,7 @@ func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
 		Hint:            hint,
 		HintColor:       MulAlpha(conf.TextColor, 0xbb),
 		SelectionColor:  MulAlpha(conf.SelectionColor, 0x60),
+		ShowLineNum:     showLineNum,
 	}
 }
 
@@ -112,6 +114,14 @@ func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {
 	}
 	e.Editor.LineHeight = e.LineHeight
 	e.Editor.LineHeightScale = e.LineHeightScale
+
+	if !e.ShowLineNum {
+		d := e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor)
+		if e.Editor.Len() == 0 {
+			call.Add(gtx.Ops)
+		}
+		return d
+	}
 
 	dims = layout.Flex{
 		Axis: layout.Horizontal,
