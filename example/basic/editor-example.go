@@ -68,6 +68,7 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 				TextSize:        th.TextSize,
 				LineHeightScale: 1.6,
 				ColorScheme:     "default",
+				ShowLineNum:     true,
 			}
 
 			vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
@@ -76,7 +77,7 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 				Left:  unit.Dp(10),
 				Right: unit.Dp(10),
 			}.Layout(gtx, func(gtx C) D {
-				return editor.NewEditor(vw.ed, editorConf, true, "type to input...").Layout(gtx)
+				return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
 			})
 		}),
 	)
