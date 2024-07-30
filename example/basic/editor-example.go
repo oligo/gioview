@@ -60,15 +60,17 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 
 		layout.Rigid(func(gtx C) D {
 			editorConf := &editor.EditorConf{
-				Shaper:          th.Shaper,
-				TextColor:       th.Fg,
-				Bg:              th.Bg,
-				SelectionColor:  th.ContrastBg,
-				TypeFace:        "Go, Helvetica, Arial, sans-serif",
-				TextSize:        th.TextSize,
-				LineHeightScale: 1.6,
-				ColorScheme:     "default",
-				ShowLineNum:     true,
+				Shaper:             th.Shaper,
+				TextColor:          th.Fg,
+				Bg:                 th.Bg,
+				SelectionColor:     th.ContrastBg,
+				LineHighlightColor: th.Fg,
+				TypeFace:           "Go, Helvetica, Arial, sans-serif",
+				TextSize:           th.TextSize,
+				LineHeightScale:    1.6,
+				ColorScheme:        "default",
+				ShowLineNum:        true,
+				LineNumPadding:     unit.Dp(24),
 			}
 
 			vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
