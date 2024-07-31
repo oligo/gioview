@@ -58,21 +58,29 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 
 		layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
 
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+		layout.Rigid(func(gtx C) D {
 			editorConf := &editor.EditorConf{
-				Shaper:          th.Shaper,
-				TextColor:       th.Fg,
-				Bg:              th.Bg,
-				SelectionColor:  th.ContrastBg,
-				TypeFace:        "Go, Helvetica, Arial, sans-serif",
-				TextSize:        th.TextSize,
-				LineHeightScale: 1.6,
-				ColorScheme:     "default",
+				Shaper:             th.Shaper,
+				TextColor:          th.Fg,
+				Bg:                 th.Bg,
+				SelectionColor:     th.ContrastBg,
+				LineHighlightColor: th.Fg,
+				TypeFace:           "Go, Helvetica, Arial, sans-serif",
+				TextSize:           th.TextSize,
+				LineHeightScale:    1.6,
+				ColorScheme:        "default",
+				ShowLineNum:        true,
+				LineNumPadding:     unit.Dp(24),
 			}
 
 			vw.ed.UpdateTextStyles(stylingText(vw.ed.Text(), vw.patternInput.Text()))
 
-			return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
+			return layout.Inset{
+				Left:  unit.Dp(10),
+				Right: unit.Dp(10),
+			}.Layout(gtx, func(gtx C) D {
+				return editor.NewEditor(vw.ed, editorConf, "type to input...").Layout(gtx)
+			})
 		}),
 	)
 
@@ -119,7 +127,7 @@ func stylingText(text string, pattern string) []*editor.TextStyle {
 }
 
 var sampleText = `
-🥳🧁🍰🎁🎂🎈🎺🎉🎊
-📧〽️🧿🌶️🔋
-Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go. It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a more user-friendly experience for developers new to Gio.
+Gio-view is a third-party toolkit that simplifies building user interfaces (UIs) for desktop applications written with the Gio library in Go.
+It provides pre-built components and widgets, saving you time and effort compared to creating everything from scratch. Gio-view offers a 
+more user-friendly experience for developers new to Gio.
 `
