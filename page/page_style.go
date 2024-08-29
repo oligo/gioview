@@ -29,9 +29,9 @@ var (
 type PageStyle struct {
 	Background color.NRGBA
 	// Minimun padding of the left and right side.
-	Padding    unit.Dp
-	MaxWidth   unit.Dp
-	listState  *widget.List
+	Padding   unit.Dp
+	MaxWidth  unit.Dp
+	listState *widget.List
 }
 
 func (p *PageStyle) Layout(gtx C, th *theme.Theme, items ...layout.Widget) D {
@@ -66,8 +66,8 @@ func (p *PageStyle) Layout(gtx C, th *theme.Theme, items ...layout.Widget) D {
 
 	return material.List(th.Theme, p.listState).Layout(gtx, len(items), func(gtx C, index int) D {
 		return layout.Inset{
-			Left:   padding,
-			Right:  padding,
+			Left:  padding,
+			Right: padding,
 		}.Layout(gtx, items[index])
 	})
 

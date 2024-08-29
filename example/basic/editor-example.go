@@ -50,6 +50,14 @@ func (vw *EditorExample) Layout(gtx layout.Context, th *theme.Theme) layout.Dime
 		layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout),
 
 		layout.Rigid(func(gtx C) D {
+			if vw.patternInput.Changed() {
+				_, err := regexp.Compile(vw.patternInput.Text())
+				if err != nil {
+					vw.patternInput.SetError(err.Error())
+				} else {
+					vw.patternInput.ClearError()
+				}
+			}
 			vw.patternInput.Padding = unit.Dp(8)
 			vw.patternInput.HelperText = "Illustrating colored text painting in text editor."
 			vw.patternInput.MaxChars = 64
