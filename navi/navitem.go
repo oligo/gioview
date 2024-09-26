@@ -101,7 +101,7 @@ func (n *NavItemStyle) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Di
 							if n.label.IsSelected() {
 								iconColor = th.ContrastFg
 							}
-							return misc.Icon{Icon: n.item.Icon(), Color: iconColor}.Layout(gtx, th)
+							return misc.Icon{Icon: n.item.Icon(), Color: iconColor, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
 						})
 					}),
 					layout.Flexed(1, func(gtx C) D {
