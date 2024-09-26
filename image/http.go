@@ -74,7 +74,7 @@ func (c *HttpClient) get(url string) (*http.Response, error) {
 	return c.client.Do(request)
 }
 
-func (c *HttpClient) Download(location string) (string, io.ReadCloser, error) {
+func (c *HttpClient) download(location string) (string, io.ReadCloser, error) {
 	location = strings.TrimSpace(location)
 	_, err := url.ParseRequestURI(location)
 	if err != nil {
@@ -100,4 +100,27 @@ func (c *HttpClient) Download(location string) (string, io.ReadCloser, error) {
 
 	filename := filepath.Base(location)
 	return filename, resp.Body, nil
+}
+
+func (c *HttpClient) Download(location string) ([]byte, error) {
+	if imageCache == nil {
+		initImageCache()
+	}
+
+	if buf, err := imageCache.get(location); err == nil {
+		return buf, nil
+	}
+
+	// read from cache failed or cache missed.
+	filename, reader, err := c.download(location)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	err = imageCache.put(location, filename, reader)
+	if err != nil {
+		return nil, err
+	}
+	return imageCache.get(location)
 }

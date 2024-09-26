@@ -4,45 +4,67 @@ import (
 	"bytes"
 	"image"
 	"image/color"
-	"io"
 	"log"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"gioui.org/op/paint"
 	"golang.org/x/image/draw"
 )
 
-// ImageSource wraps a local or remote image. Only jpeg and png format for
+type Quality uint8
+
+const (
+	// scale source image using the nearest neighbor interpolator.
+	Low Quality = iota
+	// scale using ApproxBiLinear interpolator.
+	Medium
+	// scale using BiLinear interpolator. It is slow but gives high quality.
+	High
+	// scale using Catmull-Rom interpolator. It is very slow but gives the
+	// best quality among the four.
+	Highest
+)
+
+// ImageSource wraps a local or remote image. Only jpeg, png and gif format for
 // is supported. When displaying, image scaled by the specified size and cached.
 type ImageSource struct {
+	// location has the value of "memory" for byte buffer. And it holds the url
+	// of the image for network image. It's the local file path for local image.
 	location string
-	// image data
-	src     []byte
+	// src is the buffer of the source image.
+	src []byte
 	srcSize image.Point
-	// The name of the registered image format, like "jpeg" or "png".
+	// The name of the registered image format, like "jpeg", "gif" or "png".
 	format string
 
-	// for network image
-	isLoading bool
+	// for local and network image
+	isLoading atomic.Bool
 	loadErr   error
 
 	// cache the last scaled image
 	cache *paint.ImageOp
+
+	// Select the quality of the scaled image.
+	ScaleQuality Quality
+	// Choose whether to buffer src image or not. Buffering reduces frequent
+	// image loading, but at the price of higher memory usage. Has no effect
+	// for image reading from bytes.
+	NoSrcBuf bool
 }
 
 // ImageFromBuf loads an image from bytes buffer.
 func ImageFromBuf(src []byte) *ImageSource {
-	img := &ImageSource{location: "memory"}
+	img := &ImageSource{location: "memory", ScaleQuality: Medium}
 	img.loadData(src)
 	return img
 }
 
-// ImageFromFile load an image from local filesystem or from network.
+// ImageFromFile load an image from local filesystem or from network lazily.
+// For eager image loading, use ImageFromBuf instead.
 func ImageFromFile(src string) *ImageSource {
-	img := &ImageSource{location: src}
-	img.load()
-	return img
+	return &ImageSource{location: src, ScaleQuality: Medium}
 }
 
 func (img *ImageSource) loadData(src []byte) error {
@@ -66,14 +88,16 @@ func (img *ImageSource) IsNetworkImg() bool {
 
 // loads the img from network asynchronously.
 func (img *ImageSource) load() {
-	if img.location == "memory" {
+	if img.location == "memory" || img.src != nil {
 		return
 	}
 
-	img.isLoading = true
+	if !img.isLoading.CompareAndSwap(false, true) {
+		return
+	}
 
 	go func() {
-		defer func() { img.isLoading = false }()
+		defer func() { img.isLoading.CompareAndSwap(true, false) }()
 		if !img.IsNetworkImg() {
 			// Try to load from the file system.
 			imgBuf, err := os.ReadFile(img.location)
@@ -84,25 +108,17 @@ func (img *ImageSource) load() {
 
 			img.loadErr = img.loadData(imgBuf)
 			return
-		} else {
-			// load from remote server.
-			httpClient := newClient()
-			_, resp, err := httpClient.Download(img.location)
-			if err != nil {
-				img.loadErr = err
-				return
-			}
-
-			defer resp.Close()
-
-			imgBuf, err := io.ReadAll(resp)
-			if err != nil {
-				img.loadErr = err
-				return
-			}
-
-			img.loadErr = img.loadData(imgBuf)
 		}
+
+		// load from remote server.
+		httpClient := newClient()
+		imgBuf, err := httpClient.Download(img.location)
+		if err != nil {
+			img.loadErr = err
+			return
+		}
+
+		img.loadErr = img.loadData(imgBuf)
 	}()
 }
 
@@ -139,8 +155,29 @@ func (img *ImageSource) scale(size image.Point) (*paint.ImageOp, error) {
 		return nil, err
 	}
 
+	defer func() {
+		if img.location == "memory" || !img.NoSrcBuf {
+			return
+		}
+		img.src = nil
+	}()
+
 	dest := image.NewRGBA(image.Rectangle{Max: size})
-	draw.NearestNeighbor.Scale(dest, dest.Bounds(), srcImg, srcImg.Bounds(), draw.Src, nil)
+	var interpolator draw.Interpolator
+	switch img.ScaleQuality {
+	case Low:
+		interpolator = draw.NearestNeighbor
+	case Medium:
+		interpolator = draw.ApproxBiLinear
+	case High:
+		interpolator = draw.BiLinear
+	case Highest:
+		interpolator = draw.CatmullRom
+	default:
+		interpolator = draw.ApproxBiLinear
+	}
+
+	interpolator.Scale(dest, dest.Bounds(), srcImg, srcImg.Bounds(), draw.Src, nil)
 	op := paint.NewImageOp(dest)
 	img.cache = &op
 	return img.cache, nil
@@ -151,8 +188,8 @@ var emptyImg = paint.NewImageOp(image.NewUniform(color.Opaque))
 // ImageOp scales the src image to make it fit within the constraint specified by size
 // and convert it to Gio ImageOp. If size has zero value of image Point, image is not scaled.
 func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
-	if img.isLoading || img.loadErr != nil {
-		// log.Println("load err: ", img.loadErr)
+	img.load()
+	if img.isLoading.Load() || img.loadErr != nil {
 		return &emptyImg
 	}
 
