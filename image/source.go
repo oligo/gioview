@@ -34,7 +34,7 @@ type ImageSource struct {
 	// of the image for network image. It's the local file path for local image.
 	location string
 	// src is the buffer of the source image.
-	src []byte
+	src     []byte
 	srcSize image.Point
 	// The name of the registered image format, like "jpeg", "gif" or "png".
 	format string
@@ -51,7 +51,9 @@ type ImageSource struct {
 	// Choose whether to buffer src image or not. Buffering reduces frequent
 	// image loading, but at the price of higher memory usage. Has no effect
 	// for image reading from bytes.
-	NoSrcBuf bool
+	UseSrcBuf bool
+	// onLoaded is a callback called when image data is loaded.
+	OnLoaded func(location string, ok bool)
 }
 
 // ImageFromBuf loads an image from bytes buffer.
@@ -97,7 +99,13 @@ func (img *ImageSource) load() {
 	}
 
 	go func() {
-		defer func() { img.isLoading.CompareAndSwap(true, false) }()
+		defer func() {
+			if img.isLoading.CompareAndSwap(true, false) {
+				if img.OnLoaded != nil {
+					img.OnLoaded(img.location, img.loadErr == nil)
+				}
+			}
+		}()
 		if !img.IsNetworkImg() {
 			// Try to load from the file system.
 			imgBuf, err := os.ReadFile(img.location)
@@ -156,7 +164,7 @@ func (img *ImageSource) scale(size image.Point) (*paint.ImageOp, error) {
 	}
 
 	defer func() {
-		if img.location == "memory" || !img.NoSrcBuf {
+		if img.location == "memory" || img.UseSrcBuf {
 			return
 		}
 		img.src = nil
@@ -185,8 +193,8 @@ func (img *ImageSource) scale(size image.Point) (*paint.ImageOp, error) {
 
 var emptyImg = paint.NewImageOp(image.NewUniform(color.Opaque))
 
-// ImageOp scales the src image to make it fit within the constraint specified by size
-// and convert it to Gio ImageOp. If size has zero value of image Point, image is not scaled.
+// ImageOp scales the src image dynamically or scales to the expected size if size if set.
+// If the passed size is the zero value of image Point, image is not scaled.
 func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 	img.load()
 	if img.isLoading.Load() || img.loadErr != nil {
@@ -195,6 +203,10 @@ func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 
 	width, height := img.srcSize.X, img.srcSize.Y
 	ratio := min(float32(size.X)/float32(width), float32(size.Y)/float32(height))
+	if ratio > 1.0 {
+		// Do not scale up, do it in Gio image.
+		ratio = 1.0
+	}
 	scaledImg, err := img.ScaleByRatio(ratio)
 	if err != nil {
 		log.Printf("scale image failed: %v", err)

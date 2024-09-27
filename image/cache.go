@@ -22,7 +22,7 @@ type remoteImageCache struct {
 }
 
 func newImageCache(capacity int) *remoteImageCache {
-	fileDir, err := os.MkdirTemp("gioview", app.ID)
+	fileDir, err := os.MkdirTemp("", "gioview-"+app.ID)
 	if err != nil {
 		panic(err)
 	}

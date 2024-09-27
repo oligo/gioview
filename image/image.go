@@ -12,36 +12,26 @@ import (
 	"gioui.org/widget"
 )
 
-const (
-	defaultRadius   = 0
-	defaultFit      = widget.Cover
-	defaultPosition = layout.Center
-)
-
 // ImageStyle is a widget displaying an image from an ImageSource.
 // Styling parameters can be set after construction. Displayed size
 // is specified by the max constraints of the widget.
 type ImageStyle struct {
-	src *ImageSource
+	Src *ImageSource
 	//Size   image.Point
 	Radius   unit.Dp
 	Fit      widget.Fit
+	Scale    float32
 	Position layout.Direction
 }
 
-func NewImage(src *ImageSource) *ImageStyle {
-	return &ImageStyle{
-		src:      src,
-		Radius:   unit.Dp(defaultRadius),
-		Fit:      defaultFit,
-		Position: defaultPosition,
+func (img ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
+	if img.Scale <= 0 {
+		img.Scale = 1.0 / gtx.Metric.PxPerDp
 	}
-}
 
-func (img *ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
 	macro := op.Record(gtx.Ops)
 	dims := func() layout.Dimensions {
-		if img.src == nil {
+		if img.Src == nil {
 			return img.layoutEmptyImg(gtx)
 		}
 
@@ -56,23 +46,25 @@ func (img *ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
 	return dims
 }
 
-func (img *ImageStyle) layoutImg(gtx layout.Context) layout.Dimensions {
-	imgOp := img.src.ImageOp(gtx.Constraints.Max)
-
+func (img ImageStyle) layoutImg(gtx layout.Context) layout.Dimensions {
+	imgOp := img.Src.ImageOp(gtx.Constraints.Max)
 	_img := widget.Image{
 		Src:      *imgOp,
-		Scale:    1.0 / gtx.Metric.PxPerDp,
+		Scale:    img.Scale,
 		Fit:      img.Fit,
 		Position: img.Position,
 	}
 
-	gtx.Constraints.Max = imgOp.Size()
 	return _img.Layout(gtx)
 }
 
-func (img *ImageStyle) layoutEmptyImg(gtx layout.Context) layout.Dimensions {
-	src := image.NewUniform(color.Black)
-	_img := widget.Image{Src: paint.NewImageOp(src)}
-	_img.Scale = 1.0 / gtx.Metric.PxPerDp
+func (img ImageStyle) layoutEmptyImg(gtx layout.Context) layout.Dimensions {
+	src := image.NewUniform(color.Gray{Y: 232})
+	_img := widget.Image{
+		Src:      paint.NewImageOp(src),
+		Fit:      widget.Unscaled,
+		Scale:    1.0 / gtx.Metric.PxPerDp,
+		Position: layout.Center,
+	}
 	return _img.Layout(gtx)
 }

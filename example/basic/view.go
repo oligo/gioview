@@ -87,18 +87,19 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 
 				if vw.img == nil {
-					vw.img = loadImg()
+					vw.img = loadImg(vw.vm)
 				}
 
 				//sz := 480
 				//gtx.Constraints = layout.Exact(image.Pt(sz, sz))
 				// gtx.Constraints.Max.X = 500
 				// gtx.Constraints.Min = gtx.Constraints.Max
-				img := gioimg.NewImage(vw.img)
-				img.Radius = unit.Dp(12)
-				img.Fit = widget.Unscaled
-				img.Position = layout.N
-				return img.Layout(gtx)
+				return gioimg.ImageStyle{
+					Src:      vw.img,
+					Radius:   unit.Dp(12),
+					Fit:      widget.Contain,
+					Position: layout.N,
+				}.Layout(gtx)
 			}),
 
 			layout.Rigid(layout.Spacer{Height: unit.Dp(25)}.Layout),
@@ -254,6 +255,10 @@ func (va *ExampleView) Update(gtx layout.Context) {
 func (va *ExampleView) OnFinish() {
 	va.BaseView.OnFinish()
 	// Put your cleanup code here.
+
+	// Network image can use local cache to prevent frequent network access.
+	// It is a good practice to do a cleanup on application shutdown.
+	gioimg.ClearCache()
 }
 
 func NewExampleView(vm view.ViewManager) view.View {
@@ -263,6 +268,11 @@ func NewExampleView(vm view.ViewManager) view.View {
 	}
 }
 
-func loadImg() *gioimg.ImageSource {
-	return gioimg.ImageFromFile("https://cdn.pixabay.com/photo/2013/04/04/12/34/mountains-100367_1280.jpg")
+func loadImg(vm view.ViewManager) *gioimg.ImageSource {
+	img := gioimg.ImageFromFile("https://cdn.pixabay.com/photo/2013/04/04/12/34/mountains-100367_1280.jpg")
+	img.UseSrcBuf = true
+	img.OnLoaded = func(location string, ok bool) {
+		vm.Invalidate()
+	}
+	return img
 }
