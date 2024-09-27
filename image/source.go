@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	_ "image/gif"
 	"log"
 	"os"
 	"strings"
@@ -218,4 +219,8 @@ func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 
 func (img *ImageSource) Size() image.Point {
 	return img.srcSize
+}
+
+func (img *ImageSource) Format() string {
+	return img.format
 }
