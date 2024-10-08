@@ -1,3 +1,8 @@
+// Some extra layouts for Gioui.
+//
+// ListWrap is copied from https://git.sr.ht/~pierrec/giox. 
+// All rights are reversed to the author.
+//
 package layout
 
 import (
@@ -10,12 +15,12 @@ import (
 // inf is an infinite axis constraint.
 const inf = 1e6
 
-// List lays out as many items as possible along the main axis
+// ListWrap lays out as many items as possible along the main axis
 // before wrapping to the cross axis.
 //
 // The number of items along the main axis must be the same for
 // all rows or columns on the cross axis.
-type List struct {
+type ListWrap struct {
 	Axis      layout.Axis
 	Alignment layout.Alignment
 	list      layout.List
@@ -30,7 +35,7 @@ type listData struct {
 	call  op.CallOp
 }
 
-func (l *List) init() {
+func (l *ListWrap) init() {
 	if l.list.Axis == l.Axis {
 		l.list.Axis = Swap(l.Axis)
 	}
@@ -45,7 +50,7 @@ func listWrapBlock(gtx layout.Context, idx int, dims layout.Dimensions, c op.Cal
 	return dims
 }
 
-func (l *List) Layout(gtx layout.Context, num int, el layout.ListElement, w WrappedListElement) layout.Dimensions {
+func (l *ListWrap) Layout(gtx layout.Context, num int, el layout.ListElement, w WrappedListElement) layout.Dimensions {
 	l.init()
 	left := l.Axis.Convert(gtx.Constraints.Max).X
 	if num == 0 || left == 0 {
@@ -170,11 +175,11 @@ func (l *List) Layout(gtx layout.Context, num int, el layout.ListElement, w Wrap
 	return dims
 }
 
-func (l *List) Position() layout.Position {
+func (l *ListWrap) Position() layout.Position {
 	return l.list.Position
 }
 
-func (l *List) ScrollBy(num float32) {
+func (l *ListWrap) ScrollBy(num float32) {
 	l.list.ScrollBy(num)
 }
 

@@ -12,7 +12,7 @@ import (
 // scrollbar attached.
 type WrapList struct {
 	widget.Scrollbar
-	gvlayout.List
+	gvlayout.ListWrap
 }
 
 // WrapListStyle configures the presentation of a wrappable layout.List with a scrollbar.
@@ -53,7 +53,7 @@ func (l WrapListStyle) Layout(gtx layout.Context, length int, w layout.ListEleme
 		gtx.Constraints.Min = l.state.Axis.Convert(min)
 	}
 
-	listDims := l.state.List.Layout(gtx, length, w, nil)
+	listDims := l.state.ListWrap.Layout(gtx, length, w, nil)
 	gtx.Constraints = originalConstraints
 
 	// Draw the scrollbar.
@@ -79,7 +79,7 @@ func (l WrapListStyle) Layout(gtx layout.Context, length int, w layout.ListEleme
 	if delta := l.state.ScrollDistance(); delta != 0 {
 		// Handle any changes to the list position as a result of user interaction
 		// with the scrollbar.
-		l.state.List.ScrollBy(delta * float32(length))
+		l.state.ListWrap.ScrollBy(delta * float32(length))
 	}
 
 	if l.AnchorStrategy == material.Occupy {
