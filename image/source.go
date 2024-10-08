@@ -198,7 +198,13 @@ var emptyImg = paint.NewImageOp(image.NewUniform(color.Opaque))
 // If the passed size is the zero value of image Point, image is not scaled.
 func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 	img.load()
-	if img.isLoading.Load() || img.loadErr != nil {
+	if img.isLoading.Load() {
+		if img.cache != nil {
+			return img.cache
+		}
+		return &emptyImg
+	}
+	if img.loadErr != nil {
 		return &emptyImg
 	}
 
