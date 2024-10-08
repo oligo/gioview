@@ -40,6 +40,7 @@ var allowedMIMETypes = []string{
 	"image/jpeg",
 	"image/png",
 	"image/gif",
+	"image/webp",
 	"binary/octet-stream",
 }
 

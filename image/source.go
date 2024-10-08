@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	_ "golang.org/x/image/webp"
+
 	"gioui.org/op/paint"
 	"golang.org/x/image/draw"
 )
