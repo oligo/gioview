@@ -2,6 +2,7 @@ package image
 
 import (
 	"container/list"
+	"sync"
 )
 
 // A simple lru cache to cache loaded images.
@@ -10,6 +11,7 @@ type lruCache[T any] struct {
 	items    map[string]*node[T]
 	capacity int
 	evictCb  func(key string, val T)
+	mu       sync.Mutex
 }
 
 type node[T any] struct {
@@ -27,6 +29,8 @@ func newLruCache[T any](capacity int, evictCb func(key string, val T)) *lruCache
 }
 
 func (lru *lruCache[T]) Put(key string, val T) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	if item, ok := lru.items[key]; !ok {
 		// evict the last items if capacity exceeds.
 		if len(lru.items) >= lru.capacity {
@@ -45,6 +49,8 @@ func (lru *lruCache[T]) Put(key string, val T) {
 }
 
 func (lru *lruCache[T]) Get(key string) T {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	if item, ok := lru.items[key]; ok {
 		lru.queue.MoveToFront(item.ptr)
 		return item.val
@@ -67,6 +73,8 @@ func (lru *lruCache[T]) evict() {
 }
 
 func (lru *lruCache[T]) Clear() {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	for lru.queue.Len() > 0 {
 		lru.evict()
 	}
