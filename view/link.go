@@ -21,15 +21,21 @@ import (
 	"github.com/oligo/gioview/theme"
 )
 
-// A link between views, as anchor in HTML.
-type Link struct {
+// LinkSrc defines a generic type constraint.
+// String type is for web url. And ViewID indicates a Gioview View.
+type LinkSrc interface {
+	~string | ViewID
+}
+
+// A link is a clickable widget used to jump between views, or open a web URL, as anchor in HTML.
+type Link[T LinkSrc] struct {
 	Title  string
-	Src    ViewID
+	Src    T
 	Params map[string]interface{}
-	// This is the url for webview only.
-	Location  string
-	Referer   url.URL
-	UseNewTab bool
+	// Open in new tab. Valid only if the link is a native gioview View.
+	OpenInNewTab bool
+	// Click handler for the link.
+	OnClicked func(intent any) error
 
 	click    gesture.Click
 	hovering bool
@@ -37,30 +43,53 @@ type Link struct {
 	clicked bool
 }
 
-func (link *Link) OnClick() Intent {
-	intent := Intent{
-		Target:     link.Src,
-		Params:     link.Params,
-		Referer:    link.Referer,
-		RequireNew: link.UseNewTab,
+// OnClick handles the click event by calling the provided OnClicked callback.
+// If no OnClicked callback is provided, it does nothing.
+func (link *Link[T]) OnClick() error {
+	src := any(link.Src)
+	if viewID, ok := src.(ViewID); ok {
+		intent := Intent{
+			Target:     viewID,
+			Params:     link.Params,
+			RequireNew: link.OpenInNewTab,
+		}
+		if link.OnClicked != nil {
+			return link.OnClicked(intent)
+		}
+		// No OP if no handler provided.
+		return nil
 	}
 
-	if link.Location != "" {
-		if intent.Params == nil {
-			intent.Params = make(map[string]interface{})
+	// Else parse it as a web url.
+	var loc = src.(string)
+	if link.Params == nil {
+		href, err := url.Parse(loc)
+		if err != nil {
+			return nil
 		}
 
-		intent.Params["url"] = link.Location
+		query := href.Query()
+		for k, v := range link.Params {
+			// only string is allowed
+			query.Add(k, v.(string))
+		}
+
+		href.RawQuery = query.Encode()
+		loc = href.String()
 	}
 
-	return intent
+	if link.OnClicked != nil {
+		return link.OnClicked(loc)
+	}
+
+	return nil
 }
 
-func (link *Link) Clicked() bool {
+func (link *Link[T]) Clicked() bool {
 	return link.clicked
 }
 
-func (link *Link) Layout(gtx C, lt *text.Shaper, font font.Font, size unit.Sp, textMaterial op.CallOp) D {
+func (link *Link[T]) Layout(gtx C, lt *text.Shaper, font font.Font, size unit.Sp, textMaterial op.CallOp) D {
 	link.Update(gtx)
 
 	tl := widget.Label{
@@ -73,7 +102,7 @@ func (link *Link) Layout(gtx C, lt *text.Shaper, font font.Font, size unit.Sp, t
 }
 
 // Update handles link events and reports if the link was clicked.
-func (link *Link) Update(gtx C) bool {
+func (link *Link[T]) Update(gtx C) bool {
 	for {
 		event, ok := gtx.Event(
 			pointer.Filter{Target: link, Kinds: pointer.Enter | pointer.Leave},
@@ -111,8 +140,8 @@ func (link *Link) Update(gtx C) bool {
 	return clicked
 }
 
-type LinkStyle struct {
-	state *Link
+type LinkStyle[T LinkSrc] struct {
+	state *Link[T]
 
 	// Face defines the text style.
 	Font         font.Font
@@ -122,14 +151,14 @@ type LinkStyle struct {
 	Style string
 }
 
-func NewLink(link *Link, style string) *LinkStyle {
-	return &LinkStyle{
+func NewLink[T LinkSrc](link *Link[T], style string) *LinkStyle[T] {
+	return &LinkStyle[T]{
 		state: link,
 		Style: style,
 	}
 }
 
-func (ls *LinkStyle) Layout(gtx C, th *theme.Theme) D {
+func (ls *LinkStyle[T]) Layout(gtx C, th *theme.Theme) D {
 	textColorMacro := op.Record(gtx.Ops)
 	paint.ColorOp{Color: ls.Color}.Add(gtx.Ops)
 	textColor := textColorMacro.Stop()
@@ -185,7 +214,7 @@ func (ls *LinkStyle) Layout(gtx C, th *theme.Theme) D {
 
 }
 
-func (ls *LinkStyle) layoutBackground(gtx layout.Context, th *theme.Theme) layout.Dimensions {
+func (ls *LinkStyle[T]) layoutBackground(gtx layout.Context, th *theme.Theme) layout.Dimensions {
 	var fill color.NRGBA
 	if ls.state.hovering {
 		fill = misc.WithAlpha(th.Palette.Fg, th.HoverAlpha)

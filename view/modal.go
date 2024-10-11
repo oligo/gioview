@@ -180,8 +180,8 @@ func (m *ModalView) layoutView(gtx layout.Context, th *theme.Theme) layout.Dimen
 		m.Padding = defaultPadding
 	}
 
-	gtx.Constraints.Max.X = min(int(float32(gtx.Constraints.Max.X)*0.75), gtx.Dp(m.MaxWidth))
-	gtx.Constraints.Max.Y = int(float32(gtx.Constraints.Max.Y) * 0.7)
+	gtx.Constraints.Max.X = min(gtx.Constraints.Max.X, gtx.Dp(m.MaxWidth))
+	gtx.Constraints.Max.Y = int(float32(gtx.Constraints.Max.Y) * 0.9)
 	gtx.Constraints.Min = image.Point{}
 
 	m.modalList.Axis = layout.Vertical
