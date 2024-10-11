@@ -25,6 +25,12 @@ type ImageStyle struct {
 }
 
 func (img ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
+	if img.Src != nil && img.Src.onLoaded == nil {
+		img.Src.onLoaded = func() {
+			gtx.Execute(op.InvalidateCmd{})
+		}
+	}
+
 	if img.Scale <= 0 {
 		img.Scale = 1.0 / gtx.Metric.PxPerDp
 	}

@@ -271,8 +271,5 @@ func NewExampleView(vm view.ViewManager) view.View {
 func loadImg(vm view.ViewManager) *gioimg.ImageSource {
 	img := gioimg.ImageFromFile("https://cdn.pixabay.com/photo/2013/04/04/12/34/mountains-100367_1280.jpg")
 	img.UseSrcBuf = true
-	img.OnLoaded = func(location string, ok bool) {
-		vm.Invalidate()
-	}
 	return img
 }

@@ -48,15 +48,14 @@ type ImageSource struct {
 
 	// cache the last scaled image
 	cache *paint.ImageOp
-
+	// onLoaded is a callback called when image data is loaded.
+	onLoaded func()
 	// Select the quality of the scaled image.
 	ScaleQuality Quality
 	// Choose whether to buffer src image or not. Buffering reduces frequent
 	// image loading, but at the price of higher memory usage. Has no effect
 	// for image reading from bytes.
 	UseSrcBuf bool
-	// onLoaded is a callback called when image data is loaded.
-	OnLoaded func(location string, ok bool)
 }
 
 // ImageFromBuf loads an image from bytes buffer.
@@ -104,8 +103,8 @@ func (img *ImageSource) load() {
 	go func() {
 		defer func() {
 			if img.isLoading.CompareAndSwap(true, false) {
-				if img.OnLoaded != nil {
-					img.OnLoaded(img.location, img.loadErr == nil)
+				if img.onLoaded != nil {
+					img.onLoaded()
 				}
 			}
 		}()
