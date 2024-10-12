@@ -1,4 +1,4 @@
-package view
+package widget
 
 import (
 	"image"
@@ -19,12 +19,13 @@ import (
 	"gioui.org/widget"
 	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/view"
 )
 
 // LinkSrc defines a generic type constraint.
 // String type is for web url. And ViewID indicates a Gioview View.
 type LinkSrc interface {
-	~string | ViewID
+	~string | view.ViewID
 }
 
 // A link is a clickable widget used to jump between views, or open a web URL, as anchor in HTML.
@@ -47,8 +48,8 @@ type Link[T LinkSrc] struct {
 // If no OnClicked callback is provided, it does nothing.
 func (link *Link[T]) OnClick() error {
 	src := any(link.Src)
-	if viewID, ok := src.(ViewID); ok {
-		intent := Intent{
+	if viewID, ok := src.(view.ViewID); ok {
+		intent := view.Intent{
 			Target:     viewID,
 			Params:     link.Params,
 			RequireNew: link.OpenInNewTab,
@@ -97,7 +98,6 @@ func (link *Link[T]) Layout(gtx C, lt *text.Shaper, font font.Font, size unit.Sp
 		MaxLines:  1,
 	}
 
-	// todo: should be displayed as inline text that allows text to flow to the next line.
 	return tl.Layout(gtx, lt, font, size, link.Title, textMaterial)
 }
 
