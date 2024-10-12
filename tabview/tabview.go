@@ -252,6 +252,10 @@ func (tv *TabView) Update(gtx C) {
 	}
 }
 
+func (tv *TabView) CurrentTab() int {
+	return tv.currentView
+}
+
 func (tv *TabView) calculateWidth(gtx C, th *theme.Theme) image.Point {
 	fakeOps := new(op.Ops)
 	current := gtx.Ops
