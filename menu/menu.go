@@ -47,6 +47,8 @@ type Menu struct {
 	Background color.NRGBA
 	// Inset applied around the rendered contents of the state's Options field.
 	OptionInset layout.Inset
+	// Max width of the menu.
+	MaxWidth unit.Dp
 }
 
 type MenuOption struct {
@@ -130,38 +132,47 @@ func (m *Menu) layout(gtx C, th *theme.Theme, surface func(gtx C, w layout.Widge
 
 // layoutOptions renders the menu option list.
 func (m *Menu) layoutOptions(gtx C, th *theme.Theme) D {
-	var fakeOps op.Ops
-	originalOps := gtx.Ops
-	gtx.Ops = &fakeOps
-	maxWidth := 0
-
 	if len(m.menuItems) <= 0 {
 		m.menuItems = m.buildMenus(th)
 	}
 
-	for _, w := range m.menuItems {
-		dims := w(gtx)
-		if dims.Size.X > maxWidth {
-			maxWidth = dims.Size.X
+	maxWidth := gtx.Dp(m.MaxWidth)
+	if maxWidth <= 0 {
+		var fakeOps op.Ops
+		originalOps := gtx.Ops
+		gtx.Ops = &fakeOps
+
+		for _, w := range m.menuItems {
+			dims := w(gtx)
+			if dims.Size.X > maxWidth {
+				maxWidth = dims.Size.X
+			}
 		}
+		gtx.Ops = originalOps
 	}
-	gtx.Ops = originalOps
 
 	surface := component.Surface(th.Theme)
 	surface.Fill = th.Bg
 
 	return surface.Layout(gtx, func(gtx C) D {
 		macro := op.Record(gtx.Ops)
-		dims := layout.Inset{
-			Top:    unit.Dp(8),
-			Bottom: unit.Dp(8),
+		dims := widget.Border{
+			Color:        misc.WithAlpha(th.Fg, 0xb6),
+			CornerRadius: unit.Dp(4),
+			Width:        unit.Dp(0.5),
 		}.Layout(gtx, func(gtx C) D {
-			return material.List(th.Theme, &m.optionList).Layout(gtx, len(m.menuItems), func(gtx C, index int) D {
-				gtx.Constraints.Min.X = maxWidth
-				gtx.Constraints.Max.X = maxWidth
-				return m.menuItems[index](gtx)
+			return layout.Inset{
+				Top:    unit.Dp(8),
+				Bottom: unit.Dp(8),
+			}.Layout(gtx, func(gtx C) D {
+				return material.List(th.Theme, &m.optionList).Layout(gtx, len(m.menuItems), func(gtx C, index int) D {
+					gtx.Constraints.Min.X = maxWidth
+					gtx.Constraints.Max.X = maxWidth
+					return m.menuItems[index](gtx)
+				})
 			})
 		})
+
 		call := macro.Stop()
 		defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
 		if m.Background == (color.NRGBA{}) {
