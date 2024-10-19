@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 )
@@ -20,40 +21,50 @@ const (
 
 type EntryNode struct {
 	Path string
-	Kind NodeKind
+	fs.FileInfo
 	// parent must be of folder kind.
 	Parent   *EntryNode
-	Children []*EntryNode
+	children []*EntryNode
+}
 
-	// skip folders matching the prefix
-	skipPatterns []string
+var isWindows = runtime.GOOS == "windows"
+
+func hiddenFileFilter(info fs.FileInfo) bool {
+	name := info.Name()
+	if isWindows {
+		return !strings.HasPrefix(name, "$") && !strings.HasSuffix(name, ".sys")
+	} else {
+		return !strings.HasPrefix(name, ".")
+	}
 }
 
 // Create a new file tree with a relative or absolute rootDir. Folders
 // matching prefix in any of the skipPatterns will be skipped.
-func NewFileTree(rootDir string, skipPatterns []string, lazyLoad bool) (*EntryNode, error) {
+func NewFileTree(rootDir string, lazyLoad bool) (*EntryNode, error) {
 	rootDir, err := filepath.Abs(rootDir)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	if !lazyLoad {
-		return loadTree(rootDir, skipPatterns)
+		return loadTree(rootDir)
 	}
 
+	st, err := os.Stat(rootDir)
+	if err != nil {
+		return nil, err
+	}
 	root := &EntryNode{
-		Path:         rootDir,
-		Kind:         FolderNode,
-		Parent:       nil,
-		skipPatterns: skipPatterns,
+		Path:     rootDir,
+		Parent:   nil,
+		FileInfo: st,
 	}
 
-	err = root.Refresh()
-	return root, err
+	return root, nil
 }
 
 // Load build the tree.
-func loadTree(rootDir string, skipPatterns []string) (*EntryNode, error) {
+func loadTree(rootDir string) (*EntryNode, error) {
 	var root *EntryNode
 
 	// current parent during walk.
@@ -65,35 +76,32 @@ func loadTree(rootDir string, skipPatterns []string) (*EntryNode, error) {
 			return filepath.SkipDir
 		}
 
-		if info.IsDir() {
-			for _, prefix := range skipPatterns {
-				if strings.HasPrefix(info.Name(), prefix) || strings.HasPrefix(path, prefix) {
-					return filepath.SkipDir
-				}
-			}
-		}
+		// if info.IsDir() {
+		// 	for _, prefix := range skipPatterns {
+		// 		if strings.HasPrefix(info.Name(), prefix) || strings.HasPrefix(path, prefix) {
+		// 			return filepath.SkipDir
+		// 		}
+		// 	}
+		// }
 
 		entry := &EntryNode{
-			Path: filepath.Clean(path),
+			Path:     filepath.Clean(path),
+			FileInfo: info,
 		}
 
 		if info.IsDir() {
-			entry.Kind = FolderNode
-			entry.skipPatterns = skipPatterns
 			if entry.Path == rootDir {
 				root = entry
 			}
-		} else {
-			entry.Kind = FileNode
 		}
 
 		// find the parent of the current entry:
 		if p := findParent(parent, entry); p != nil {
-			p.Children = append(p.Children, entry)
+			p.children = append(p.children, entry)
 			entry.Parent = p
 		}
 
-		if entry.Kind == FolderNode {
+		if entry.IsDir() {
 			// update the current parent to this folder
 			parent = entry
 		}
@@ -108,8 +116,20 @@ func loadTree(rootDir string, skipPatterns []string) (*EntryNode, error) {
 	return root, nil
 }
 
-func (n *EntryNode) Name() string {
-	return filepath.Base(n.Path)
+func (n *EntryNode) Kind() NodeKind {
+	if n.IsDir() {
+		return FolderNode
+	}
+
+	return FileNode
+}
+
+func (n *EntryNode) Children() []*EntryNode {
+	if n.children == nil {
+		n.Refresh(hiddenFileFilter)
+	}
+
+	return n.children
 }
 
 // Add new file or folder.
@@ -122,38 +142,36 @@ func (n *EntryNode) AddChild(name string, kind NodeKind) error {
 		return err
 	}
 
-	child := &EntryNode{
-		Path:         filepath.Join(n.Path, name),
-		Kind:         kind,
-		Parent:       n,
-		skipPatterns: n.skipPatterns,
-	}
-
+	path := filepath.Join(n.Path, name)
 	if kind == FileNode {
-		file, err := os.Create(child.Path)
+		file, err := os.Create(path)
 		if err != nil {
 			return err
 		}
 		file.Close()
 	} else if kind == FolderNode {
-		if err := os.Mkdir(child.Path, 0755); err != nil {
+		if err := os.Mkdir(path, 0755); err != nil {
 			return err
 		}
 	}
 
+	st, _ := os.Stat(path)
+	child := &EntryNode{
+		Path:     filepath.Clean(path),
+		Parent:   n,
+		FileInfo: st,
+	}
+
 	// insert at the beginning of the children.
-	n.Children = slices.Insert(n.Children, 0, child)
+	n.children = slices.Insert(n.children, 0, child)
 	return nil
 }
 
 func (n *EntryNode) checkDuplicate(name string) error {
-	for _, sibling := range n.Children {
-		if sibling.Name() == name {
-			return errors.New("duplicate file/folder name found")
-		}
-	}
+	filename := filepath.Join(n.Path, name)
+	_, err := os.Stat(filename)
 
-	return nil
+	return err
 }
 
 // Update set a new name for the current file/folder.
@@ -172,7 +190,7 @@ func (n *EntryNode) UpdateName(newName string) error {
 
 	newPath := filepath.Join(filepath.Dir(n.Path), newName)
 	defer func() {
-		n.Path = newPath
+		n.Path = filepath.Clean(newPath)
 	}()
 
 	return os.Rename(n.Path, newPath)
@@ -198,7 +216,7 @@ func (n *EntryNode) Delete(onlyEmptyDir bool) error {
 		return err
 	}
 
-	n.Parent.Children = slices.DeleteFunc(n.Parent.Children, func(en *EntryNode) bool {
+	n.Parent.children = slices.DeleteFunc(n.Parent.children, func(en *EntryNode) bool {
 		return en.Path == n.Path
 	})
 	return nil
@@ -216,41 +234,43 @@ func (n *EntryNode) FileType() string {
 }
 
 // Refresh reload child entries of the current entry node
-func (n *EntryNode) Refresh() error {
-	if n.Kind == FileNode {
+func (n *EntryNode) Refresh(filterFunc func(entry fs.FileInfo) bool) error {
+	if !n.IsDir() {
 		return nil
 	}
 
-	entries, err := os.ReadDir(n.Path)
-	if err != nil {
-		return err
-	}
+	n.children = n.children[:0]
 
-	entries = slices.DeleteFunc(entries, func(info fs.DirEntry) bool {
-		if info.IsDir() {
-			for _, prefix := range n.skipPatterns {
-				if strings.HasPrefix(info.Name(), prefix) {
-					return true
-				}
-			}
+	err := filepath.Walk(n.Path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Println("file/folder skipped: ", path, err)
+			return filepath.SkipDir
 		}
 
-		return false
+		if path == n.Path {
+			return nil
+		}
+
+		// only direct children dir is walked.
+		if filepath.Dir(path) != n.Path {
+			return filepath.SkipDir
+		}
+
+		if filterFunc != nil && filterFunc(info) {
+			entry := &EntryNode{
+				Path:     filepath.Clean(path),
+				FileInfo: info,
+				Parent:   n,
+			}
+
+			n.children = append(n.children, entry)
+		}
+
+		return nil
 	})
 
-	n.Children = n.Children[:0]
-	for _, entr := range entries {
-		kind := FileNode
-		if entr.IsDir() {
-			kind = FolderNode
-		}
-
-		n.Children = append(n.Children, &EntryNode{
-			Path:         filepath.Join(n.Path, entr.Name()),
-			Kind:         kind,
-			Parent:       n,
-			skipPatterns: n.skipPatterns,
-		})
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -258,14 +278,14 @@ func (n *EntryNode) Refresh() error {
 
 // for test purpose
 func (n *EntryNode) printTree(depth int) {
-	if n.Kind == FolderNode {
+	if !n.IsDir() {
 		fmt.Printf("+--%s %s\n", strings.Repeat("-", depth), n.Path)
 
 	} else {
 		fmt.Printf("|%s \\--- %s\n", strings.Repeat(" ", depth), n.Path)
 	}
 
-	for _, child := range n.Children {
+	for _, child := range n.Children() {
 		child.printTree(depth + 1)
 	}
 }

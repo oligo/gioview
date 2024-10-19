@@ -2,7 +2,6 @@ package filetree
 
 import (
 	"errors"
-	"fmt"
 	"image/color"
 	"log"
 	"slices"
@@ -12,7 +11,6 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/oligo/gioview/menu"
@@ -87,8 +85,8 @@ func (tn *FileTreeNav) Layout(gtx C, th *theme.Theme) D {
 // `skipFolders` allows you to specify folder name prefixes to exclude from the navigation.
 // `menuOptionFunc` is used to define the operations allowed by context menu(use right click to active it).
 // `onSelectFunc` defines what action to take when a navigable item is clicked (files or folders).
-func NewEntryNavItem(rootDir string, skipFolders []string, menuOptionFunc MenuOptionFunc, onSelectFunc OnSelectFunc) *EntryNavItem {
-	tree, err := NewFileTree(rootDir, skipFolders, true)
+func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc OnSelectFunc) *EntryNavItem {
+	tree, err := NewFileTree(rootDir, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -111,7 +109,7 @@ func NewEntryNavItem(rootDir string, skipFolders []string, menuOptionFunc MenuOp
 }
 
 func (eitem *EntryNavItem) Icon() *widget.Icon {
-	if eitem.state.Kind == FolderNode {
+	if eitem.state.Kind() == FolderNode {
 		if eitem.expaned {
 			return folderOpenIcon
 		}
@@ -132,7 +130,7 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 		gtx.Execute(key.FocusCmd{Tag: eitem})
 	}
 
-	if eitem.state.Kind == FileNode && eitem.onSelectFunc != nil {
+	if eitem.state.Kind() == FileNode && eitem.onSelectFunc != nil {
 		return eitem.onSelectFunc(gtx, eitem.state)
 	}
 
@@ -143,33 +141,13 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D {
 	eitem.update(gtx)
 
-	return layout.Flex{
-		Axis:      layout.Horizontal,
-		Alignment: layout.Middle,
-	}.Layout(gtx,
-		layout.Flexed(1, func(gtx C) D {
-			if eitem.isEditing {
-				return eitem.layoutEditArea(gtx, th)
-			}
+	if eitem.isEditing {
+		return eitem.layoutEditArea(gtx, th)
+	}
 
-			lb := material.Label(th.Theme, th.TextSize, eitem.state.Name())
-			lb.Color = textColor
-			return lb.Layout(gtx)
-		}),
-
-		layout.Rigid(func(gtx C) D {
-			if eitem.state.Kind == FileNode {
-				return D{}
-			}
-
-			return layout.Inset{Left: unit.Dp(4)}.Layout(gtx, func(gtx C) D {
-				label := material.Label(th.Theme, th.TextSize, fmt.Sprintf("%d", len(eitem.state.Children)))
-				label.Color = misc.WithAlpha(textColor, 0xb6)
-				label.TextSize = th.TextSize * 0.7
-				return label.Layout(gtx)
-			})
-		}),
-	)
+	lb := material.Label(th.Theme, th.TextSize, eitem.state.Name())
+	lb.Color = textColor
+	return lb.Layout(gtx)
 }
 
 func (eitem *EntryNavItem) layoutEditArea(gtx C, th *theme.Theme) D {
@@ -191,7 +169,7 @@ func (eitem *EntryNavItem) layoutEditArea(gtx C, th *theme.Theme) D {
 }
 
 func (eitem *EntryNavItem) IsDir() bool {
-	return eitem.state.Kind == FolderNode
+	return eitem.state.IsDir()
 }
 
 func (eitem *EntryNavItem) SetMenuOptions(menuOptionFunc MenuOptionFunc) {
@@ -208,7 +186,7 @@ func (eitem *EntryNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool)
 }
 
 func (eitem *EntryNavItem) Children() []navi.NavItem {
-	if eitem.state.Kind == FileNode {
+	if eitem.state.Kind() == FileNode {
 		return nil
 	}
 
@@ -217,21 +195,26 @@ func (eitem *EntryNavItem) Children() []navi.NavItem {
 	}
 
 	if eitem.children == nil {
-		eitem.buildChildren()
+		eitem.buildChildren(true)
 	}
 
 	if eitem.needSync {
-		eitem.state.Refresh()
-		eitem.buildChildren()
+		eitem.buildChildren(true)
 		eitem.needSync = false
 	}
 
 	return eitem.children
 }
 
-func (eitem *EntryNavItem) buildChildren() {
+func (eitem *EntryNavItem) buildChildren(sync bool) {
 	eitem.children = eitem.children[:0]
-	for _, c := range eitem.state.Children {
+	if sync {
+		err := eitem.state.Refresh(hiddenFileFilter)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	for _, c := range eitem.state.Children() {
 		eitem.children = append(eitem.children, &EntryNavItem{
 			parent:         eitem,
 			state:          c,
@@ -305,7 +288,7 @@ func (eitem *EntryNavItem) update(gtx C) {
 // Create file or subfolder under the current folder.
 // File or subfolder is inserted at the beginning of the children.
 func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind) error {
-	if eitem.state.Kind == FileNode {
+	if eitem.state.Kind() == FileNode {
 		return nil
 	}
 
@@ -326,7 +309,7 @@ func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind) error {
 
 	child := &EntryNavItem{
 		parent:         eitem,
-		state:          eitem.state.Children[0],
+		state:          eitem.state.Children()[0],
 		menuOptionFunc: eitem.menuOptionFunc,
 		onSelectFunc:   eitem.onSelectFunc,
 		expaned:        false,
@@ -366,5 +349,5 @@ func (eitem *EntryNavItem) Path() string {
 
 // EntryNode kind of this node
 func (eitem *EntryNavItem) Kind() NodeKind {
-	return eitem.state.Kind
+	return eitem.state.Kind()
 }

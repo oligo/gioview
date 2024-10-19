@@ -87,7 +87,8 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 			hv.currentModal = modal
 			hv.currentModal.Background = th.Bg
 			hv.currentModal.Radius = unit.Dp(8)
-			hv.currentModal.MaxWidth = unit.Dp(700)
+			hv.currentModal.MaxWidth = unit.Dp(760)
+			hv.currentModal.MaxHeight = 0.6
 			hv.currentModal.ShowUp(gtx)
 		}
 	} else {
@@ -109,12 +110,14 @@ func newHome(window *app.Window) *HomeView {
 	sidebar := navi.NewNavDrawer(vm)
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Tabviews & Image", ExampleViewID, false))
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Editor Example", EditorExampleViewID, false))
+	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "File Explorer", ExplorerViewID, true))
 
-	fileTree := filetree.NewEntryNavItem("../../", []string{"."}, nil, nil)
+	fileTree := filetree.NewEntryNavItem("../../", nil, nil)
 	sidebar.AddSection(filetree.NewFileTreeNav(sidebar, "File Explorer", fileTree))
 
 	vm.Register(ExampleViewID, func() view.View { return NewExampleView(vm) })
 	vm.Register(EditorExampleViewID, NewEditorExample)
+	vm.Register(ExplorerViewID, NewFileExplorerView)
 
 	return &HomeView{
 		ViewManager: vm,

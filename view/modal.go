@@ -47,13 +47,15 @@ type ModalView struct {
 	Background color.NRGBA
 	// Maximum width of the modal area.
 	MaxWidth unit.Dp
-	Radius   unit.Dp
+	// Maximum height of the modal in ratio relateive to the window.
+	// The max value is restricted to 0.9 to prevent it overflow.
+	MaxHeight float32
+	Radius    unit.Dp
 	//position  f32.Point
-	dims      layout.Dimensions
-	closed    bool
-	modalList widget.List
-	closeBtn  widget.Clickable
-	anim      *cmp.VisibilityAnimation
+	dims     layout.Dimensions
+	closed   bool
+	closeBtn widget.Clickable
+	anim     *cmp.VisibilityAnimation
 }
 
 func (m *ModalView) IsClosed(gtx layout.Context) bool {
@@ -181,10 +183,10 @@ func (m *ModalView) layoutView(gtx layout.Context, th *theme.Theme) layout.Dimen
 	}
 
 	gtx.Constraints.Max.X = min(gtx.Constraints.Max.X, gtx.Dp(m.MaxWidth))
-	gtx.Constraints.Max.Y = int(float32(gtx.Constraints.Max.Y) * 0.9)
-	gtx.Constraints.Min = image.Point{}
+	gtx.Constraints.Max.Y = int(float32(gtx.Constraints.Max.Y) * min(0.9, m.MaxHeight))
+	gtx.Constraints.Min = gtx.Constraints.Max
 
-	m.modalList.Axis = layout.Vertical
+	// m.modalList.Axis = layout.Vertical
 
 	return m.Padding.Layout(gtx, func(gtx C) D {
 		return layout.Flex{
@@ -196,13 +198,11 @@ func (m *ModalView) layoutView(gtx layout.Context, th *theme.Theme) layout.Dimen
 
 			layout.Rigid(layout.Spacer{Height: unit.Dp(16)}.Layout),
 			layout.Rigid(func(gtx C) D {
-				return material.List(th.Theme, &m.modalList).Layout(gtx, 1, func(gtx C, _ int) D {
-					return layout.Inset{
-						Left:  unit.Dp(5),
-						Right: unit.Dp(5),
-					}.Layout(gtx, func(gtx C) D {
-						return m.View.Layout(gtx, th)
-					})
+				return layout.Inset{
+					Left:  unit.Dp(5),
+					Right: unit.Dp(5),
+				}.Layout(gtx, func(gtx C) D {
+					return m.View.Layout(gtx, th)
 				})
 			}),
 		)

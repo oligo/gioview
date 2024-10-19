@@ -21,12 +21,14 @@ type InteractiveLabel struct {
 	itemClick  gesture.Click
 	isSelected bool
 	hovering   bool
-
-	clicked bool
 }
 
 func (l *InteractiveLabel) IsSelected() bool {
 	return l.isSelected
+}
+
+func (l *InteractiveLabel) Select() {
+	l.isSelected = true
 }
 
 func (l *InteractiveLabel) Unselect() {
