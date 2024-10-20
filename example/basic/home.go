@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/oligo/gioview/filetree"
+	"github.com/oligo/gioview/explorer"
 	"github.com/oligo/gioview/navi"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
@@ -107,13 +107,15 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 func newHome(window *app.Window) *HomeView {
 	vm := view.DefaultViewManager(window)
 
+	fileChooser, _ = explorer.NewFileChooser(vm)
+
 	sidebar := navi.NewNavDrawer(vm)
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Tabviews & Image", ExampleViewID, false))
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Editor Example", EditorExampleViewID, false))
-	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "File Explorer", ExplorerViewID, true))
+	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "File Explorer", ExplorerViewID, false))
 
-	fileTree := filetree.NewEntryNavItem("../../", nil, nil)
-	sidebar.AddSection(filetree.NewFileTreeNav(sidebar, "File Explorer", fileTree))
+	fileTree := explorer.NewEntryNavItem("../../", nil, nil)
+	sidebar.AddSection(explorer.NewFileTreeNav(sidebar, "File Explorer", fileTree))
 
 	vm.Register(ExampleViewID, func() view.View { return NewExampleView(vm) })
 	vm.Register(EditorExampleViewID, NewEditorExample)
@@ -128,4 +130,8 @@ func newHome(window *app.Window) *HomeView {
 
 var (
 	viewIcon, _ = widget.NewIcon(icons.ActionViewModule)
+)
+
+var (
+	fileChooser *explorer.FileChooser
 )

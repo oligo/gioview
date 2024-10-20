@@ -1,4 +1,4 @@
-package filetree
+package explorer
 
 import (
 	"gioui.org/widget/material"

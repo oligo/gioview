@@ -1,4 +1,4 @@
-package filetree
+package explorer
 
 import (
 	"errors"

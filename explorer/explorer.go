@@ -1,4 +1,4 @@
-package filetree
+package explorer
 
 import (
 	"image"
@@ -11,6 +11,7 @@ import (
 
 	"gioui.org/gesture"
 	"gioui.org/io/event"
+	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -29,14 +30,18 @@ import (
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
 
-type navAction uint8
+type userAction uint8
 
+// user actions in the explorer viewer.
 const (
-	noAction navAction = iota
+	noAction userAction = iota
 	goBackwardAction
 	goForwardAction
 	refreshAction
 	searchAction
+	openFolderAction
+	selectAction
+	multiSelectAction
 )
 
 type volume struct {
@@ -62,8 +67,10 @@ type locationList struct {
 }
 
 type entryItem struct {
+	node     *EntryNode
 	click    gesture.Click
 	hovering bool
+	selected bool
 }
 
 type history struct {
@@ -76,6 +83,9 @@ type entryViewer struct {
 	pendingNext *EntryNode // to prevent list layout conflicts.
 	list        *widget.List
 	items       []*entryItem
+	// selected items
+	selectedItems []*entryItem
+	multiSelect   bool
 	//panel
 	panel   *entryPanel
 	history *history
@@ -89,12 +99,12 @@ type entryPanel struct {
 }
 
 type FileExplorer struct {
-	favorites *favoritesList
-	locations *locationList
-	viewer    *entryViewer
-	history   *history
-
-	resizer *component.Resize
+	history     *history
+	favorites   *favoritesList
+	locations   *locationList
+	viewer      *entryViewer
+	bottomPanel bottomPanel
+	resizer     *component.Resize
 }
 
 var (
@@ -143,7 +153,7 @@ func newEntryViewer(path string, history *history) *entryViewer {
 	return ev
 }
 
-func NewFileExplorer() *FileExplorer {
+func newFileExplorer() *FileExplorer {
 	return &FileExplorer{
 		history: &history{},
 		favorites: &favoritesList{
@@ -186,7 +196,20 @@ func (exp *FileExplorer) Layout(gtx C, th *theme.Theme) D {
 		},
 
 		func(gtx C) D {
-			return exp.layoutBody(gtx, th)
+			return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+				layout.Flexed(1, func(gtx C) D {
+					return exp.layoutBody(gtx, th)
+				}),
+				layout.Rigid(func(gtx C) D {
+					gtx.Constraints.Min.X = gtx.Constraints.Max.X
+					divider := misc.Divider(layout.Horizontal, unit.Dp(1))
+					divider.Inset = layout.Inset{Top: unit.Dp(16), Bottom: unit.Dp(16)}
+					return divider.Layout(gtx, th)
+				}),
+				layout.Rigid(func(gtx C) D {
+					return exp.bottomPanel.Layout(gtx, th)
+				}),
+			)
 		},
 
 		func(gtx C) D {
@@ -432,7 +455,9 @@ func (ev *entryViewer) Update(gtx C) {
 	if lastTree != ev.entryTree || len(ev.entryTree.Children()) != len(lastTree.Children()) {
 		ev.list.Position.First = 0
 		ev.items = ev.items[:0]
+		ev.clearSelection()
 	}
+
 }
 
 func (ev *entryViewer) Layout(gtx C, th *theme.Theme) D {
@@ -459,6 +484,14 @@ func (ev *entryViewer) Layout(gtx C, th *theme.Theme) D {
 	)
 }
 
+func (ev *entryViewer) clearSelection() {
+	for _, item := range ev.selectedItems {
+		item.selected = false
+	}
+	ev.selectedItems = ev.selectedItems[:0]
+	ev.multiSelect = false
+}
+
 func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 	return material.List(th.Theme, ev.list).Layout(gtx, len(ev.entryTree.Children()), func(gtx C, index int) D {
 		return layout.Inset{
@@ -468,12 +501,24 @@ func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 		}.Layout(gtx, func(gtx C) D {
 			entry := ev.entryTree.Children()[index]
 			if len(ev.items) < index+1 {
-				ev.items = append(ev.items, &entryItem{})
+				ev.items = append(ev.items, &entryItem{node: entry})
 			}
+
 			item := ev.items[index]
-			// A folder is double clicked, open it in the explorer.
-			if item.Update(gtx) && entry.IsDir() {
-				ev.pendingNext = entry
+			action := item.Update(gtx)
+
+			switch action {
+			case openFolderAction:
+				// A folder is double clicked, open it in the explorer.
+				if action == openFolderAction && entry.IsDir() {
+					ev.pendingNext = entry
+				}
+			case selectAction:
+				ev.clearSelection()
+				ev.selectedItems = append(ev.selectedItems, item)
+			case multiSelectAction:
+				ev.selectedItems = append(ev.selectedItems, item)
+				ev.multiSelect = true
 			}
 
 			return item.Layout(gtx, th, entry)
@@ -529,8 +574,8 @@ func (ep *entryPanel) Layout(gtx C, th *theme.Theme, entry *EntryNode) D {
 	)
 }
 
-func (ep *entryPanel) Update(gtx C) navAction {
-	var action navAction
+func (ep *entryPanel) Update(gtx C) userAction {
+	var action userAction
 	if ep.backward.Clicked(gtx) {
 		action = goBackwardAction
 	}
@@ -586,7 +631,7 @@ func (ei *entryItem) layout(gtx C, th *theme.Theme, entry *EntryNode) D {
 }
 
 // Update entryItem states and report whether the item is double clicked.
-func (ei *entryItem) Update(gtx C) bool {
+func (ei *entryItem) Update(gtx C) userAction {
 	for {
 		event, ok := gtx.Event(
 			pointer.Filter{Target: ei, Kinds: pointer.Enter | pointer.Leave},
@@ -608,28 +653,39 @@ func (ei *entryItem) Update(gtx C) bool {
 		}
 	}
 
-	var selected bool
+	var action userAction
 	for {
 		e, ok := ei.click.Update(gtx.Source)
 		if !ok {
 			break
 		}
 		if e.Kind == gesture.KindClick {
-			if e.Source == pointer.Mouse && e.NumClicks == 2 {
-				selected = true
-			} else if e.Source == pointer.Touch && e.NumClicks == 1 {
-				selected = true
+			switch e.NumClicks {
+			case 2:
+				action = openFolderAction
+			case 1:
+				if e.Modifiers.Contain(key.ModShortcut) {
+					action = multiSelectAction
+				} else {
+					action = selectAction
+				}
+				ei.selected = true
 			}
-
 		}
 	}
-
-	return selected
+	return action
 }
 
 func (ei *entryItem) layoutBackground(gtx layout.Context, th *theme.Theme) layout.Dimensions {
-	if !ei.hovering {
+	if !ei.selected && !ei.hovering {
 		return layout.Dimensions{Size: gtx.Constraints.Min}
+	}
+
+	var fill color.NRGBA
+	if ei.hovering {
+		fill = misc.WithAlpha(th.Palette.Fg, th.HoverAlpha)
+	} else if ei.selected {
+		fill = misc.WithAlpha(th.Palette.Fg, th.SelectedAlpha)
 	}
 
 	rr := gtx.Dp(unit.Dp(4))
@@ -642,7 +698,7 @@ func (ei *entryItem) layoutBackground(gtx layout.Context, th *theme.Theme) layou
 		NW: rr,
 		SW: rr,
 	}
-	paint.FillShape(gtx.Ops, misc.WithAlpha(th.Palette.Fg, th.HoverAlpha), rect.Op(gtx.Ops))
+	paint.FillShape(gtx.Ops, fill, rect.Op(gtx.Ops))
 	return layout.Dimensions{Size: gtx.Constraints.Min}
 }
 
