@@ -684,6 +684,10 @@ func (ei *entryItem) Update(gtx C) userAction {
 			}
 		}
 	}
+
+	if action > 0 {
+		gtx.Execute(op.InvalidateCmd{})
+	}
 	return action
 }
 

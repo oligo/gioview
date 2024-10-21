@@ -2,14 +2,18 @@ package explorer
 
 import (
 	"errors"
+	"image/color"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"gioui.org/layout"
+	"gioui.org/op"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -63,6 +67,7 @@ type bottomPanel struct {
 	cancelCb      func()
 	addFolderCb   func(folderName string) error
 	err           error
+	errShowAt     time.Time
 }
 
 func NewFileChooser(vm view.ViewManager) (*FileChooser, error) {
@@ -214,15 +219,32 @@ func (vw *FileChooserDialog) OnNavTo(intent view.Intent) error {
 		case saveFileOp:
 			filename := strings.TrimSpace(vw.fileExplorer.bottomPanel.saveFileInput.Text())
 			if filename == "" {
-				return errors.New("empty filename")
+				return errors.New("Empty filename")
 			}
 
 			vw.resultChan <- result{paths: []string{filepath.Join(currentPath, filename)}}
 		case openFileOp, openFilesOp, openFolderOp:
 			paths := make([]string, 0)
+
+			if len(vw.fileExplorer.viewer.selectedItems) <= 0 {
+				if op == openFileOp || op == openFilesOp {
+					return errors.New("No file/folder selected")
+				}
+
+				if op == openFolderOp {
+					// use the current dir.
+					paths = append(paths, vw.fileExplorer.viewer.entryTree.Path)
+				}
+			}
+
 			for item := range vw.fileExplorer.viewer.selectedItems {
+				if (op == openFileOp || op == openFolderOp) && len(paths) == 1 {
+					break
+				}
+
 				paths = append(paths, item.node.Path)
 			}
+
 			vw.resultChan <- result{paths: paths}
 		}
 
@@ -302,12 +324,7 @@ func (p *bottomPanel) Layout(gtx C, th *theme.Theme) D {
 			}
 			return layout.Spacer{Height: unit.Dp(16)}.Layout(gtx)
 		}),
-		layout.Rigid(func(gtx C) D {
-			if p.err == nil {
-				return D{}
-			}
-			return misc.LayoutErrorLabel(gtx, th, p.err)
-		}),
+
 		layout.Rigid(func(gtx C) D {
 			return layout.Flex{
 				Axis:      layout.Horizontal,
@@ -319,6 +336,13 @@ func (p *bottomPanel) Layout(gtx C, th *theme.Theme) D {
 				}),
 
 				layout.Rigid(layout.Spacer{Width: unit.Dp(32)}.Layout),
+
+				layout.Rigid(func(gtx C) D {
+					if p.err == nil {
+						return D{}
+					}
+					return p.layoutError(gtx, th)
+				}),
 
 				layout.Rigid(func(gtx C) D {
 					return layout.Flex{
@@ -415,4 +439,29 @@ func (p *bottomPanel) layoutAddFolderForm(gtx C, th *theme.Theme) D {
 			return btn.Layout(gtx)
 		}),
 	)
+}
+
+const errorShowDuration = time.Second * 2
+
+func (p *bottomPanel) layoutError(gtx C, th *theme.Theme) D {
+	if p.err == nil {
+		return D{}
+	}
+
+	if p.errShowAt.IsZero() {
+		p.errShowAt = gtx.Now
+		gtx.Execute(op.InvalidateCmd{At: p.errShowAt.Add(errorShowDuration)})
+	} else if p.errShowAt.Add(errorShowDuration).Before(gtx.Now) {
+		defer func() {
+			p.errShowAt = time.Time{}
+			p.err = nil
+		}()
+	}
+
+	return layout.Inset{Right: unit.Dp(36)}.Layout(gtx, func(gtx C) D {
+		label := material.Label(th.Theme, th.TextSize, p.err.Error())
+		label.Color = color.NRGBA{R: 255, A: 255}
+		label.Alignment = text.Middle
+		return label.Layout(gtx)
+	})
 }
