@@ -193,6 +193,12 @@ func (exp *FileExplorer) Update(gtx C) {
 		exp.viewer = newEntryViewer(exp.locations.currentVol().mountPoint, exp.history, exp.entryFilter)
 		exp.favorites.lastSelected = -1
 	}
+
+	if exp.viewer == nil {
+		exp.favorites.lastSelected = 0
+		exp.locations.lastSelected = -1
+		exp.viewer = newEntryViewer(exp.favorites.dirs[exp.favorites.lastSelected], exp.history, exp.entryFilter)
+	}
 }
 
 func (exp *FileExplorer) Layout(gtx C, th *theme.Theme) D {
