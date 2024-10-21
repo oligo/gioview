@@ -86,7 +86,7 @@ func (tn *FileTreeNav) Layout(gtx C, th *theme.Theme) D {
 // `menuOptionFunc` is used to define the operations allowed by context menu(use right click to active it).
 // `onSelectFunc` defines what action to take when a navigable item is clicked (files or folders).
 func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc OnSelectFunc) *EntryNavItem {
-	tree, err := NewFileTree(rootDir, true)
+	tree, err := NewFileTree(rootDir)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -19,6 +19,11 @@ const (
 	FolderNode
 )
 
+// A filter is used to decide which files/folders are retained when
+// buiding a EntryNode's children. Returning false will remove the current
+// entry from from the children.
+type EntryFilter func(info fs.FileInfo) bool
+
 type EntryNode struct {
 	Path string
 	fs.FileInfo
@@ -38,16 +43,38 @@ func hiddenFileFilter(info fs.FileInfo) bool {
 	}
 }
 
-// Create a new file tree with a relative or absolute rootDir. Folders
-// matching prefix in any of the skipPatterns will be skipped.
-func NewFileTree(rootDir string, lazyLoad bool) (*EntryNode, error) {
+func searchFilter(query string) func(info fs.FileInfo) bool {
+	return func(info fs.FileInfo) bool {
+		return strings.Contains(info.Name(), query)
+	}
+}
+
+func AggregatedFilters(filters ...EntryFilter) EntryFilter {
+	if len(filters) <= 0 {
+		return nil
+	}
+
+	return func(info fs.FileInfo) bool {
+		for _, filter := range filters {
+			if filter == nil {
+				continue
+			}
+
+			if !filter(info) {
+				return false
+			}
+		}
+
+		return true
+	}
+}
+
+// Create a new file tree with a relative or absolute rootDir. A filter is used
+// to decide which files/folders are retained.
+func NewFileTree(rootDir string) (*EntryNode, error) {
 	rootDir, err := filepath.Abs(rootDir)
 	if err != nil {
 		log.Fatalln(err)
-	}
-
-	if !lazyLoad {
-		return loadTree(rootDir)
 	}
 
 	st, err := os.Stat(rootDir)
@@ -234,7 +261,7 @@ func (n *EntryNode) FileType() string {
 }
 
 // Refresh reload child entries of the current entry node
-func (n *EntryNode) Refresh(filterFunc func(entry fs.FileInfo) bool) error {
+func (n *EntryNode) Refresh(filterFunc EntryFilter) error {
 	if !n.IsDir() {
 		return nil
 	}

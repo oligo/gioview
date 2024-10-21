@@ -43,7 +43,7 @@ func (vw *FileExplorerView) Title() string {
 func (vw *FileExplorerView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimensions {
 	if vw.openFileBtn.Clicked(gtx) {
 		go func() {
-			reader, _ := fileChooser.ChooseFile()
+			reader, _ := fileChooser.ChooseFile(".jpg", ".png")
 			defer reader.Close()
 			file := reader.(*os.File)
 			vw.msg1 = file.Name()

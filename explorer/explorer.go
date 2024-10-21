@@ -3,7 +3,6 @@ package explorer
 import (
 	"image"
 	"image/color"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -40,6 +39,7 @@ const (
 	refreshAction
 	searchAction
 	openFolderAction
+	addFolderAction
 	selectAction
 	multiSelectAction
 )
@@ -80,11 +80,12 @@ type history struct {
 
 type entryViewer struct {
 	entryTree   *EntryNode
+	entryFilter EntryFilter
 	pendingNext *EntryNode // to prevent list layout conflicts.
 	list        *widget.List
 	items       []*entryItem
 	// selected items
-	selectedItems []*entryItem
+	selectedItems map[*entryItem]struct{}
 	multiSelect   bool
 	//panel
 	panel   *entryPanel
@@ -99,7 +100,10 @@ type entryPanel struct {
 }
 
 type FileExplorer struct {
-	history     *history
+	history *history
+	// external entry filter
+	entryFilter EntryFilter
+
 	favorites   *favoritesList
 	locations   *locationList
 	viewer      *entryViewer
@@ -132,23 +136,27 @@ func (v volume) Name() string {
 	return filepath.Base(v.mountPoint)
 }
 
-func newEntryViewer(path string, history *history) *entryViewer {
-	tree, err := NewFileTree(path, true)
+func newEntryViewer(path string, history *history, filter EntryFilter) *entryViewer {
+	tree, err := NewFileTree(path)
 	if err != nil {
 		panic(err)
 	}
+
 	ev := &entryViewer{
-		entryTree: tree,
+		entryTree:   tree,
+		entryFilter: AggregatedFilters(hiddenFileFilter, filter), // search filter should be added dynamically.
 		list: &widget.List{
 			List: layout.List{
 				Axis: layout.Vertical,
 			},
 		},
-		panel:   &entryPanel{},
-		history: history,
+		panel:         &entryPanel{},
+		history:       history,
+		selectedItems: make(map[*entryItem]struct{}),
 	}
 
 	ev.history.Push(ev.entryTree)
+	tree.Refresh(ev.entryFilter)
 
 	return ev
 }
@@ -177,12 +185,12 @@ func newFileExplorer() *FileExplorer {
 
 func (exp *FileExplorer) Update(gtx C) {
 	if exp.favorites.update(gtx) {
-		exp.viewer = newEntryViewer(exp.favorites.dirs[exp.favorites.lastSelected], exp.history)
+		exp.viewer = newEntryViewer(exp.favorites.dirs[exp.favorites.lastSelected], exp.history, exp.entryFilter)
 		exp.locations.lastSelected = -1
 	}
 
 	if exp.locations.update(gtx) {
-		exp.viewer = newEntryViewer(exp.locations.currentVol().mountPoint, exp.history)
+		exp.viewer = newEntryViewer(exp.locations.currentVol().mountPoint, exp.history, exp.entryFilter)
 		exp.favorites.lastSelected = -1
 	}
 }
@@ -419,20 +427,15 @@ func (loc *locationList) currentVol() *volume {
 	return loc.volumes[loc.lastSelected]
 }
 
-func searchFilter(query string) func(info fs.FileInfo) bool {
-	return func(info fs.FileInfo) bool {
-		if strings.Contains(info.Name(), query) {
-			return hiddenFileFilter(info)
-		}
-
-		return false
-	}
+func (ev *entryViewer) refresh() {
+	ev.entryTree.Refresh(AggregatedFilters(ev.entryFilter, searchFilter(strings.TrimSpace(ev.panel.searchInput.Text()))))
 }
 
 func (ev *entryViewer) Update(gtx C) {
 	lastTree := ev.entryTree
 	if ev.pendingNext != nil {
 		ev.entryTree = ev.pendingNext
+		ev.refresh()
 		ev.history.Push(ev.entryTree)
 		ev.pendingNext = nil
 	}
@@ -441,12 +444,14 @@ func (ev *entryViewer) Update(gtx C) {
 	switch action {
 	case goBackwardAction:
 		ev.entryTree = ev.history.Backward()
+		ev.refresh()
+
 	case goForwardAction:
 		ev.entryTree = ev.history.Forward()
-	case refreshAction:
-		ev.entryTree.Refresh(hiddenFileFilter)
-	case searchAction:
-		ev.entryTree.Refresh(searchFilter(strings.TrimSpace(ev.panel.searchInput.Text())))
+		ev.refresh()
+
+	case refreshAction, searchAction:
+		ev.refresh()
 	default:
 		// pass
 	}
@@ -485,10 +490,10 @@ func (ev *entryViewer) Layout(gtx C, th *theme.Theme) D {
 }
 
 func (ev *entryViewer) clearSelection() {
-	for _, item := range ev.selectedItems {
+	for item := range ev.selectedItems {
 		item.selected = false
 	}
-	ev.selectedItems = ev.selectedItems[:0]
+	clear(ev.selectedItems)
 	ev.multiSelect = false
 }
 
@@ -515,9 +520,9 @@ func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 				}
 			case selectAction:
 				ev.clearSelection()
-				ev.selectedItems = append(ev.selectedItems, item)
+				ev.selectedItems[item] = struct{}{}
 			case multiSelectAction:
-				ev.selectedItems = append(ev.selectedItems, item)
+				ev.selectedItems[item] = struct{}{}
 				ev.multiSelect = true
 			}
 
