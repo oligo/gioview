@@ -7,7 +7,7 @@ A significant portion of the Gio-view codebase originates from the Fernnote proj
 ## Features:
 
 * **View Manager**: Manages the lifecycle of your views and handles user interactions between them.
-* **Pre-built Widgets**: Includes components like editors, image viewers, lists, menus, navigation drawers, tab bars, and more.
+* **Pre-built Widgets**: Includes components like editors, image viewers, pure-go file explorer/file dialog, lists, menus, navigation drawers, tab bars, and more.
 * **Built-in Theme**: Provides a starting point for your app's visual design.
 * **Custom Font Loader**: Allows you to easily integrate custom fonts into your UI.
 
@@ -29,11 +29,11 @@ Screenshots of the example:
 
 ![image & tabview](./screenshots/Screenshot-1.png)
 ![modal view](./screenshots/Screenshot-2.png) 
+![file explorer](./screenshots/Screenshot-3.png)
 
 ## Caveats:
 
 * **Desktop Focus**: Currently, Gio-view primarily targets desktop applications. While Gio itself is cross-platform, some styling adjustments might be needed for mobile UIs.
-* **Limited Customization**: Out-of-the-box styles might not offer complete design flexibility.
 
 
 ## Contributing
