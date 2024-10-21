@@ -231,7 +231,12 @@ func (vw *FileChooserDialog) OnNavTo(intent view.Intent) error {
 	}
 
 	vw.fileExplorer.bottomPanel.addFolderCb = func(folderName string) error {
-		return vw.fileExplorer.viewer.entryTree.AddChild(folderName, FolderNode)
+		err := vw.fileExplorer.viewer.entryTree.AddChild(folderName, FolderNode)
+		if err == nil {
+			vw.fileExplorer.viewer.refresh()
+		}
+
+		return err
 	}
 
 	if f, ok := intent.Params["filter"]; ok {

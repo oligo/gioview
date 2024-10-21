@@ -165,8 +165,8 @@ func (n *EntryNode) AddChild(name string, kind NodeKind) error {
 		return errors.New("empty file/folder name")
 	}
 
-	if err := n.checkDuplicate(name); err != nil {
-		return err
+	if n.exists(name) {
+		return errors.New("duplicated file/folder name")
 	}
 
 	path := filepath.Join(n.Path, name)
@@ -194,11 +194,11 @@ func (n *EntryNode) AddChild(name string, kind NodeKind) error {
 	return nil
 }
 
-func (n *EntryNode) checkDuplicate(name string) error {
+func (n *EntryNode) exists(name string) bool {
 	filename := filepath.Join(n.Path, name)
 	_, err := os.Stat(filename)
 
-	return err
+	return err == nil
 }
 
 // Update set a new name for the current file/folder.
@@ -211,8 +211,8 @@ func (n *EntryNode) UpdateName(newName string) error {
 		return nil
 	}
 
-	if err := n.Parent.checkDuplicate(newName); err != nil {
-		return err
+	if n.Parent.exists(newName) {
+		return errors.New("duplicated file/folder name")
 	}
 
 	newPath := filepath.Join(filepath.Dir(n.Path), newName)
