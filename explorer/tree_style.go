@@ -6,18 +6,13 @@ import (
 	"log"
 	"slices"
 
-	"gioui.org/io/key"
 	"gioui.org/layout"
-	"gioui.org/op"
-	"gioui.org/op/clip"
-	"gioui.org/op/paint"
 	"gioui.org/widget"
-	"gioui.org/widget/material"
 	"github.com/oligo/gioview/menu"
-	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/navi"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
+	gv "github.com/oligo/gioview/widget"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
 
@@ -45,16 +40,12 @@ type EntryNavItem struct {
 	menuOptionFunc MenuOptionFunc
 	onSelectFunc   OnSelectFunc
 
-	parent     navi.NavItem
-	children   []navi.NavItem
-	nameEditor *widget.Editor
-	expaned    bool
-	needSync   bool
-	isEditing  bool
+	parent   navi.NavItem
+	children []navi.NavItem
+	label     *gv.Editable
+	expaned   bool
+	needSync  bool
 
-	// FolderIcon     *widget.Icon
-	// FolderOpenIcon *widget.Icon
-	// FileIcon       *widget.Icon
 }
 
 type MenuOptionFunc func(gtx C, item *EntryNavItem) [][]menu.MenuOption
@@ -125,11 +116,6 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 		eitem.needSync = true
 	}
 
-	// move focus to the nav item clicked.
-	if !gtx.Focused(eitem.nameEditor) {
-		gtx.Execute(key.FocusCmd{Tag: eitem})
-	}
-
 	if eitem.state.Kind() == FileNode && eitem.onSelectFunc != nil {
 		return eitem.onSelectFunc(gtx, eitem.state)
 	}
@@ -139,33 +125,18 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 }
 
 func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D {
-	eitem.update(gtx)
 
-	if eitem.isEditing {
-		return eitem.layoutEditArea(gtx, th)
+	if eitem.label == nil {
+		eitem.label = gv.EditableLabel(th.TextSize, eitem.state.Name(), func(text string) {
+			err := eitem.state.UpdateName(text)
+			if err != nil {
+				log.Println("err: ", err)
+			}
+		})
 	}
 
-	lb := material.Label(th.Theme, th.TextSize, eitem.state.Name())
-	lb.Color = textColor
-	return lb.Layout(gtx)
-}
-
-func (eitem *EntryNavItem) layoutEditArea(gtx C, th *theme.Theme) D {
-	macro := op.Record(gtx.Ops)
-	dims := material.Editor(th.Theme, eitem.nameEditor, "").Layout(gtx)
-	call := macro.Stop()
-
-	rect := clip.Rect{Max: dims.Size}
-
-	paint.FillShape(gtx.Ops, misc.WithAlpha(th.Fg, 0x60),
-		clip.Stroke{
-			Path:  rect.Path(),
-			Width: float32(gtx.Dp(1)),
-		}.Op(),
-	)
-
-	call.Add(gtx.Ops)
-	return dims
+	eitem.label.Color = textColor
+	return eitem.label.Layout(gtx, th)
 }
 
 func (eitem *EntryNavItem) IsDir() bool {
@@ -228,61 +199,7 @@ func (eitem *EntryNavItem) buildChildren(sync bool) {
 
 // StartEditing inits and focused on the editor to accept user input.
 func (eitem *EntryNavItem) StartEditing(gtx C) {
-	if eitem.nameEditor == nil {
-		eitem.nameEditor = &widget.Editor{
-			SingleLine: true,
-			MaxLen:     256, // windows has max filename length 256
-			Submit:     true,
-		}
-	}
-
-	eitem.nameEditor.SetText(eitem.state.Name())
-	gtx.Execute(key.FocusCmd{Tag: eitem.nameEditor})
-	eitem.nameEditor.SetCaret(0, len(eitem.nameEditor.Text()))
-	eitem.isEditing = true
-}
-
-// IsEditing is used to indicate the current node is being edited.
-func (eitem *EntryNavItem) IsEditing(gtx C) bool {
-	return eitem.nameEditor != nil && eitem.isEditing
-}
-
-// update process eitem edit events. name is updated when one of the following situation
-// occurred:
-// 1. user pressed Enter key after input
-// 2. current node's editor lost focus but text changed.
-func (eitem *EntryNavItem) update(gtx C) {
-	if eitem.nameEditor == nil {
-		return
-	}
-
-	saveName := false
-	//check if user pressed Enter key after input
-	for {
-		event, ok := eitem.nameEditor.Update(gtx)
-		if !ok {
-			break
-		}
-
-		switch event.(type) {
-		case widget.SubmitEvent:
-			// enter pressed
-			saveName = true
-		}
-	}
-
-	//  or editor lost focus but name is changed
-	if eitem.IsEditing(gtx) && !gtx.Focused(eitem.nameEditor) && eitem.state.Name() != eitem.nameEditor.Text() {
-		saveName = true
-	}
-
-	if saveName {
-		err := eitem.state.UpdateName(eitem.nameEditor.Text())
-		if err != nil {
-			log.Println("err: ", err)
-		}
-		eitem.isEditing = false
-	}
+	eitem.label.SetEditing(true)
 }
 
 // Create file or subfolder under the current folder.

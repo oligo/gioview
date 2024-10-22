@@ -40,13 +40,13 @@ func EditableLabel(textSize unit.Sp, text string, onChanged func(text string)) *
 func (e *Editable) SetEditing(editing bool) {
 	e.editing = editing
 	e.editor.SetText(e.Text)
+	e.editor.SetCaret(0, e.editor.Len())
 }
 
 func (e *Editable) Update(gtx C) {
 	e.editor.SingleLine = true
 	e.editor.Submit = true
 
-	var clicked bool
 	for {
 		event, ok := gtx.Event(
 			key.FocusFilter{Target: e},
@@ -60,34 +60,37 @@ func (e *Editable) Update(gtx C) {
 		switch event := event.(type) {
 		case key.Event:
 			if event.Name == key.NameEscape {
-				e.editing = false
-				e.editor.SetText(e.Text)
+				e.quit()
 			}
 		case pointer.Event:
 			switch event.Kind {
 			case pointer.Enter:
 				e.hovering = true
-			case pointer.Leave:
-				e.hovering = false
-			case pointer.Cancel:
+			case pointer.Leave, pointer.Cancel:
 				e.hovering = false
 			case pointer.Press:
-				clicked = true
+				// when the label is clicked by any button, request to focus on it.
+				// Other editing labels will lost focus, and finally can quit their editing states.
+				if !e.editing {
+					gtx.Execute(key.FocusCmd{Tag: e})
+				}
+
 			}
+		case key.FocusEvent:
+			// pass
+
 		}
 	}
 
-	// when the label is clicked, request to focus on it, and other editing label will lost focus.
-	// So that when the current label lost focus and then quit editing.
-	if !e.editing && clicked {
-		gtx.Execute(key.FocusCmd{Tag: e})
+	if e.editing && !e.editorFocused {
+		gtx.Execute(key.FocusCmd{Tag: &e.editor})
 	}
 
 	if gtx.Focused(&e.editor) {
 		e.editorFocused = true
 	} else if e.editorFocused {
 		// editor not focused and but was focused, that is it lost focus.
-		defer func() { e.editing = false }()
+		defer e.quit()
 	}
 
 	// handle editor events:
@@ -100,6 +103,11 @@ func (e *Editable) Update(gtx C) {
 			}
 		}
 	}
+}
+
+func (e *Editable) quit() {
+	e.editing = false
+	e.editorFocused = false
 }
 
 func (e *Editable) Layout(gtx C, th *theme.Theme) D {
