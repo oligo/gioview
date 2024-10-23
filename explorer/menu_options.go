@@ -9,6 +9,7 @@ import (
 
 // Default operation for file tree nodes.
 // Support file/folder copy, cut, paste, rename, delete and new file/folder creation.
+// This should better be used as an example. Feel free to copy and build your own.
 func DefaultFileMenuOptions(vm view.ViewManager) MenuOptionFunc {
 	return func(gtx C, item *EntryNavItem) [][]menu.MenuOption {
 
@@ -79,7 +80,7 @@ func DefaultFileMenuOptions(vm view.ViewManager) MenuOptionFunc {
 				// create new file in current folder
 				{
 					OnClicked: func() error {
-						return item.CreateChild(gtx, FileNode)
+						return item.CreateChild(gtx, FileNode, nil)
 					},
 
 					Layout: func(gtx C, th *theme.Theme) D {
@@ -90,7 +91,7 @@ func DefaultFileMenuOptions(vm view.ViewManager) MenuOptionFunc {
 				// create subfolder
 				{
 					OnClicked: func() error {
-						return item.CreateChild(gtx, FolderNode)
+						return item.CreateChild(gtx, FolderNode, nil)
 					},
 
 					Layout: func(gtx C, th *theme.Theme) D {

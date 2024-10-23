@@ -29,10 +29,9 @@ type Editable struct {
 	editing       bool
 }
 
-func EditableLabel(textSize unit.Sp, text string, onChanged func(text string)) *Editable {
+func EditableLabel(text string, onChanged func(text string)) *Editable {
 	return &Editable{
 		Text:      text,
-		TextSize:  textSize,
 		OnChanged: onChanged,
 	}
 }

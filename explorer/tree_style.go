@@ -42,14 +42,13 @@ type EntryNavItem struct {
 
 	parent   navi.NavItem
 	children []navi.NavItem
-	label     *gv.Editable
-	expaned   bool
-	needSync  bool
-
+	label    *gv.Editable
+	expaned  bool
+	needSync bool
 }
 
 type MenuOptionFunc func(gtx C, item *EntryNavItem) [][]menu.MenuOption
-type OnSelectFunc func(gtx C, item *EntryNode) view.Intent
+type OnSelectFunc func(item *EntryNode) view.Intent
 
 // Construct a FileTreeNav object that loads files and folders from rootDir. The skipFolders
 // parameter allows you to specify folder name prefixes to exclude from the navigation.
@@ -117,7 +116,7 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 	}
 
 	if eitem.state.Kind() == FileNode && eitem.onSelectFunc != nil {
-		return eitem.onSelectFunc(gtx, eitem.state)
+		return eitem.onSelectFunc(eitem.state)
 	}
 
 	return view.Intent{}
@@ -127,7 +126,7 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D {
 
 	if eitem.label == nil {
-		eitem.label = gv.EditableLabel(th.TextSize, eitem.state.Name(), func(text string) {
+		eitem.label = gv.EditableLabel(eitem.state.Name(), func(text string) {
 			err := eitem.state.UpdateName(text)
 			if err != nil {
 				log.Println("err: ", err)
@@ -136,6 +135,7 @@ func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor
 	}
 
 	eitem.label.Color = textColor
+	eitem.label.TextSize = th.TextSize
 	return eitem.label.Layout(gtx, th)
 }
 
@@ -204,7 +204,7 @@ func (eitem *EntryNavItem) StartEditing(gtx C) {
 
 // Create file or subfolder under the current folder.
 // File or subfolder is inserted at the beginning of the children.
-func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind) error {
+func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind, postAction func(node *EntryNode)) error {
 	if eitem.state.Kind() == FileNode {
 		return nil
 	}
@@ -217,21 +217,29 @@ func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind) error {
 	}
 
 	if err != nil {
-		// TODO: use modal to show the error if user provided one.
-		log.Println(err)
 		return err
 	}
 
-	//eitem.StartEditing(gtx)
+	childNode := eitem.state.Children()[0]
 
 	child := &EntryNavItem{
 		parent:         eitem,
-		state:          eitem.state.Children()[0],
+		state:          childNode,
 		menuOptionFunc: eitem.menuOptionFunc,
 		onSelectFunc:   eitem.onSelectFunc,
 		expaned:        false,
 		needSync:       false,
 	}
+
+	child.label = gv.EditableLabel(childNode.Name(), func(text string) {
+		err := childNode.UpdateName(text)
+		if err != nil {
+			log.Println("update name err: ", err)
+		}
+		if postAction != nil {
+			postAction(childNode)
+		}
+	})
 
 	eitem.children = slices.Insert[[]navi.NavItem, navi.NavItem](eitem.children, 0, child)
 	// focus the child input
@@ -245,7 +253,7 @@ func (eitem *EntryNavItem) Remove() error {
 		return errors.New("cannot remove root dir/file")
 	}
 
-	err := eitem.state.Delete(true)
+	err := eitem.state.Delete()
 	if err != nil {
 		return err
 	}

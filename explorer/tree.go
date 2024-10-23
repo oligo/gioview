@@ -223,22 +223,13 @@ func (n *EntryNode) UpdateName(newName string) error {
 	return os.Rename(n.Path, newPath)
 }
 
-// Delete removes the current file/folders. If onlyEmptyDir is set,
-// Delete stops removing non-empty dir if n is a folder node and returns an error.
-// TODO: only empty dir is allowed to be removed for now. May add support for
-// removing to recyle bin.
-func (n *EntryNode) Delete(onlyEmptyDir bool) error {
+// Delete removes the current file/folders to the system Trash bin.
+func (n *EntryNode) Delete() error {
 	if n.Parent == nil {
 		return errors.New("cannot update name of root dir")
 	}
 
-	// if onlyEmptyDir {
-	// 	return os.Remove(n.Path)
-	// } else {
-	// 	return os.RemoveAll(n.Path)
-	// }
-
-	err := os.Remove(n.Path)
+	err := throwToTrash(n.Path)
 	if err != nil {
 		return err
 	}
