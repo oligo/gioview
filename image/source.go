@@ -40,7 +40,8 @@ type ImageSource struct {
 	src     []byte
 	srcSize image.Point
 	// The name of the registered image format, like "jpeg", "gif" or "png".
-	format string
+	format     string
+	scaleRatio float32
 
 	// for local and network image
 	isLoading atomic.Bool
@@ -215,6 +216,7 @@ func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 		// Do not scale up, do it in Gio image.
 		ratio = 1.0
 	}
+	img.scaleRatio = ratio
 	scaledImg, err := img.ScaleByRatio(ratio)
 	if err != nil {
 		log.Printf("scale image failed: %v", err)
@@ -226,6 +228,14 @@ func (img *ImageSource) ImageOp(size image.Point) *paint.ImageOp {
 
 func (img *ImageSource) Size() image.Point {
 	return img.srcSize
+}
+
+func (img *ImageSource) ScaleRatio() float32 {
+	if img.scaleRatio <= 0 {
+		img.scaleRatio = 1.0
+	}
+
+	return img.scaleRatio
 }
 
 func (img *ImageSource) Format() string {

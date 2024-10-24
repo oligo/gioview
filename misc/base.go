@@ -29,7 +29,7 @@ func (i Icon) Layout(gtx C, th *theme.Theme) D {
 		i.Size = unit.Dp(18)
 	}
 	if i.Color == (color.NRGBA{}) {
-		i.Color = WithAlpha(th.Palette.Fg, 0xb6)
+		i.Color = th.ContrastBg
 	}
 
 	iconSize := gtx.Dp(i.Size)
