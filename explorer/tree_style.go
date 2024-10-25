@@ -1,12 +1,25 @@
 package explorer
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"image"
 	"image/color"
+	"io"
 	"log"
 	"slices"
+	"strings"
 
+	"gioui.org/io/clipboard"
+	"gioui.org/io/event"
+	"gioui.org/io/key"
+	"gioui.org/io/pointer"
+	"gioui.org/io/transfer"
 	"gioui.org/layout"
+	"gioui.org/op"
+	"gioui.org/op/clip"
+	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"github.com/oligo/gioview/menu"
 	"github.com/oligo/gioview/navi"
@@ -45,6 +58,7 @@ type EntryNavItem struct {
 	label    *gv.Editable
 	expaned  bool
 	needSync bool
+	isCut    bool
 }
 
 type MenuOptionFunc func(gtx C, item *EntryNavItem) [][]menu.MenuOption
@@ -124,7 +138,24 @@ func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
 }
 
 func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D {
+	eitem.Update(gtx)
 
+	macro := op.Record(gtx.Ops)
+	dims := eitem.layout(gtx, th, textColor)
+	call := macro.Stop()
+
+	defer pointer.PassOp{}.Push(gtx.Ops).Pop()
+	defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
+	if eitem.isCut {
+		defer paint.PushOpacity(gtx.Ops, 0.7).Pop()
+	}
+	event.Op(gtx.Ops, eitem)
+	call.Add(gtx.Ops)
+
+	return dims
+}
+
+func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D {
 	if eitem.label == nil {
 		eitem.label = gv.EditableLabel(eitem.state.Name(), func(text string) {
 			err := eitem.state.UpdateName(text)
@@ -165,11 +196,7 @@ func (eitem *EntryNavItem) Children() []navi.NavItem {
 		return nil
 	}
 
-	if eitem.children == nil {
-		eitem.buildChildren(true)
-	}
-
-	if eitem.needSync {
+	if eitem.children == nil || eitem.needSync {
 		eitem.buildChildren(true)
 		eitem.needSync = false
 	}
@@ -275,4 +302,124 @@ func (eitem *EntryNavItem) Path() string {
 // EntryNode kind of this node
 func (eitem *EntryNavItem) Kind() NodeKind {
 	return eitem.state.Kind()
+}
+
+// read data from clipboard.
+func (eitem *EntryNavItem) OnPaste(data string, removeOld bool) error {
+	pathes := strings.Split(string(data), "\n")
+	if removeOld {
+		for _, p := range pathes {
+			err := eitem.state.Move(p)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		for _, p := range pathes {
+			err := eitem.state.Copy(p)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	eitem.needSync = true
+	eitem.expaned = true
+	return nil
+}
+
+func (eitem *EntryNavItem) OnCopyOrCut(gtx C, isCut bool) {
+	gtx.Execute(clipboard.WriteCmd{Type: mimeText, Data: io.NopCloser(asPayload(eitem.Path(), isCut))})
+	eitem.isCut = isCut
+}
+
+func (eitem *EntryNavItem) Update(gtx C) error {
+	for {
+		ke, ok := gtx.Event(
+			// focus conflicts with editable. so subscribe editable's key events here.
+			key.Filter{Focus: eitem.label, Name: "C", Required: key.ModShortcut},
+			key.Filter{Focus: eitem.label, Name: "V", Required: key.ModShortcut},
+			key.Filter{Focus: eitem.label, Name: "X", Required: key.ModShortcut},
+			transfer.TargetFilter{Target: eitem, Type: mimeOctStream},
+			transfer.TargetFilter{Target: eitem, Type: mimeText},
+		)
+
+		if !ok {
+			break
+		}
+
+		switch event := ke.(type) {
+		case key.Event:
+			if !event.Modifiers.Contain(key.ModShortcut) || event.State != key.Press {
+				break
+			}
+
+			switch event.Name {
+			// Initiate a paste operation, by requesting the clipboard contents; other
+			// half is in DataEvent.
+			case "V":
+				gtx.Execute(clipboard.ReadCmd{Tag: eitem})
+
+			// Copy or Cut selection -- ignored if nothing selected.
+			case "C", "X":
+				eitem.OnCopyOrCut(gtx, event.Name == "X")
+			}
+
+		case transfer.DataEvent:
+			// read the clipboard content:
+			defer gtx.Execute(op.InvalidateCmd{})
+
+			if event.Type == mimeText {
+				p, err := toPayload(event.Open())
+				if err == nil {
+					if err := eitem.OnPaste(p.Data, p.IsCut); err != nil {
+						return err
+					}
+				} else {
+					content, err := io.ReadAll(event.Open())
+					if err == nil {
+						if err := eitem.OnPaste(string(content), false); err != nil {
+							return err
+						}
+					}
+				}
+			}
+
+		}
+	}
+
+	return nil
+}
+
+const (
+	mimeText      = "application/text"
+	mimeOctStream = "application/octet-stream"
+)
+
+type payload struct {
+	IsCut bool   `json:"isCut"`
+	Data  string `json:"data"`
+}
+
+func asPayload(data string, isCut bool) io.Reader {
+	p := payload{Data: data, IsCut: isCut}
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(p)
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.NewReader(buf.String())
+}
+
+func toPayload(reader io.ReadCloser) (*payload, error) {
+	p := payload{}
+	defer reader.Close()
+
+	err := json.NewDecoder(reader).Decode(&p)
+	if err != nil {
+		return nil, err
+	}
+
+	return &p, nil
 }

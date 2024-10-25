@@ -41,7 +41,7 @@ func (i Icon) Layout(gtx C, th *theme.Theme) D {
 func IconButton(th *theme.Theme, icon *widget.Icon, button *widget.Clickable, description string) material.IconButtonStyle {
 	return material.IconButtonStyle{
 		Background:  th.Palette.Bg,
-		Color:       WithAlpha(th.Palette.Fg, 0xb6),
+		Color:       th.Palette.ContrastBg,
 		Icon:        icon,
 		Size:        18,
 		Inset:       layout.UniformInset(4),

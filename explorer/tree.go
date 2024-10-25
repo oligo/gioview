@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"slices"
 	"strings"
-	"syscall"
 )
 
 type NodeKind uint8
@@ -217,7 +216,7 @@ func (n *EntryNode) Copy(nodePath string) error {
 	}
 
 	if n.exists(filepath.Base(nodePath)) {
-		return errors.New("duplicated file/folder name")
+		return errors.New("duplicated file/folder name: " + nodePath)
 	}
 
 	nodeInfo, _ := os.Stat(nodePath)
@@ -403,13 +402,18 @@ func entryExists(path string) bool {
 
 // copyDirectory copies src dir to dest dir, preserving permissions and ownership.
 func copyDirectory(src, dst string) error {
+	subdir := filepath.Join(dst, filepath.Base(src))
+	if err := createDir(subdir, 0755); err != nil {
+		return err
+	}
+
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		return err
 	}
 	for _, entry := range entries {
 		sourcePath := filepath.Join(src, entry.Name())
-		destPath := filepath.Join(dst, entry.Name())
+		destPath := filepath.Join(subdir, entry.Name())
 
 		fileInfo, err := os.Stat(sourcePath)
 		if err != nil {
@@ -418,9 +422,6 @@ func copyDirectory(src, dst string) error {
 
 		switch fileInfo.Mode() & os.ModeType {
 		case os.ModeDir:
-			if err := createDir(destPath, 0755); err != nil {
-				return err
-			}
 			if err := copyDirectory(sourcePath, destPath); err != nil {
 				return err
 			}
@@ -434,14 +435,9 @@ func copyDirectory(src, dst string) error {
 			}
 		}
 
-		if runtime.GOOS != "windows" {
-			stat, ok := fileInfo.Sys().(*syscall.Stat_t)
-			if !ok {
-				return fmt.Errorf("failed to get raw syscall.Stat_t data for '%s'", sourcePath)
-			}
-			if err := os.Lchown(destPath, int(stat.Uid), int(stat.Gid)); err != nil {
-				return err
-			}
+		err = chown(sourcePath, destPath, fileInfo)
+		if err != nil {
+			return err
 		}
 
 		isSymlink := fileInfo.Mode()&os.ModeSymlink != 0

@@ -5,9 +5,11 @@ package explorer
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 func throwToTrash(path string) error {
@@ -27,6 +29,14 @@ func throwToTrash(path string) error {
 	}
 
 	trashPath := filepath.Join(trashDir, filepath.Base(path))
+	// If trashPath exists, rename will replace it with the new one.
+	// If trashPath is a dir, rename will fail. So we have better to check it first.
+	_, err = os.Stat(trashPath)
+	if err == nil {
+		now := time.Now()
+		trashPath = filepath.Join(trashDir, fmt.Sprintf("%s-%d%d%d", filepath.Base(path), now.Hour(), now.Minute(), now.Second()))
+	}
+
 	err = os.Rename(absPath, trashPath)
 	if err != nil {
 		return err
