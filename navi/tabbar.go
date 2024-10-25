@@ -115,6 +115,10 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 				Alignment: layout.Middle,
 			}.Layout(gtx,
 				layout.Rigid(func(gtx C) D {
+					if !tb.vm.HasPrev() {
+						return D{}
+					}
+
 					return layout.Inset{
 						Left:  unit.Dp(10),
 						Right: unit.Dp(10),
@@ -130,6 +134,9 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 				layout.Flexed(0.8, func(gtx C) D {
 					// FIXME: As pointed out in this todo, layout.List does not scroll when laid out horizontally:
 					// https://todo.sr.ht/~eliasnaur/gio/530
+					// UPDATE: As https://todo.sr.ht/~eliasnaur/gio/398 and https://git.sr.ht/~eliasnaur/gio/commit/febadd3 pointed out,
+					// You can scoll horizontally using a wheel with the shift key pressed.
+					// But scroll without pressing a shift key would be better.
 					return tb.list.Layout(gtx, len(tb.tabs), func(gtx C, index int) D {
 						return tb.tabs[index].Layout(gtx, th)
 					})
