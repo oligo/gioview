@@ -32,11 +32,12 @@ var (
 )
 
 type TabView struct {
-	Axis         layout.Axis
-	list         layout.List
-	tabItems     []*TabItem
-	currentView  int
-	headerLength int
+	Axis        layout.Axis
+	list        layout.List
+	tabItems    []*TabItem
+	currentView int
+	headerSize  int
+	bodySize    int
 }
 
 type TabItem struct {
@@ -196,9 +197,9 @@ func (tv *TabView) Layout(gtx C, th *theme.Theme) D {
 				})
 
 				if tv.Axis == layout.Horizontal {
-					tv.headerLength = listDims.Size.X
+					tv.headerSize = listDims.Size.X
 				} else {
-					tv.headerLength = listDims.Size.Y
+					tv.headerSize = listDims.Size.Y
 				}
 				return listDims
 			})
@@ -207,29 +208,35 @@ func (tv *TabView) Layout(gtx C, th *theme.Theme) D {
 			if tv.Axis == layout.Horizontal {
 				return layout.Spacer{Height: unit.Dp(2)}.Layout(gtx)
 			} else {
-				return layout.Spacer{Width: unit.Dp(8)}.Layout(gtx)
+				return layout.Spacer{Width: unit.Dp(24)}.Layout(gtx)
 			}
 		}),
 
 		layout.Rigid(func(gtx C) D {
 			if tv.Axis == layout.Horizontal {
-				gtx.Constraints.Min.X = tv.headerLength
+				gtx.Constraints.Min.X = tv.headerSize
 			} else {
-				gtx.Constraints.Min.Y = tv.headerLength
+				gtx.Constraints.Min.Y = max(tv.headerSize, tv.bodySize)
 			}
 			return misc.Divider(tv.Axis, unit.Dp(0.5)).Layout(gtx, th)
 		}),
 
 		layout.Rigid(func(gtx C) D {
 			if tv.Axis == layout.Horizontal {
-				return layout.Spacer{Height: unit.Dp(20)}.Layout(gtx)
+				return layout.Spacer{Height: unit.Dp(24)}.Layout(gtx)
 			} else {
-				return layout.Spacer{Width: unit.Dp(20)}.Layout(gtx)
+				return layout.Spacer{Width: unit.Dp(24)}.Layout(gtx)
 			}
 		}),
 
 		layout.Rigid(func(gtx C) D {
-			return tv.tabItems[tv.currentView].LayoutWidget(gtx, th)
+			dims := tv.tabItems[tv.currentView].LayoutWidget(gtx, th)
+			if tv.Axis == layout.Vertical {
+				tv.bodySize = dims.Size.Y
+				gtx.Execute(op.InvalidateCmd{})
+			}
+
+			return dims
 		}),
 	)
 }
