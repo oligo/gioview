@@ -224,6 +224,11 @@ func (eitem *EntryNavItem) buildChildren(sync bool) {
 	}
 }
 
+func (eitem *EntryNavItem) Refresh() {
+	eitem.expaned = true
+	eitem.needSync = true
+}
+
 // StartEditing inits and focused on the editor to accept user input.
 func (eitem *EntryNavItem) StartEditing(gtx C) {
 	eitem.label.SetEditing(true)
