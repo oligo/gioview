@@ -86,20 +86,12 @@ func (tn *FileTreeNav) Layout(gtx C, th *theme.Theme) D {
 }
 
 // Construct a file tree object that loads files and folders from rootDir.
-// `skipFolders` allows you to specify folder name prefixes to exclude from the navigation.
 // `menuOptionFunc` is used to define the operations allowed by context menu(use right click to active it).
 // `onSelectFunc` defines what action to take when a navigable item is clicked (files or folders).
-func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc OnSelectFunc) *EntryNavItem {
+func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc OnSelectFunc) (*EntryNavItem, error) {
 	tree, err := NewFileTree(rootDir)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	//tree.Print()
-
-	if err != nil {
-		log.Println("load file tree failed", err)
-		return nil
+		return nil, err
 	}
 
 	return &EntryNavItem{
@@ -108,7 +100,7 @@ func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc
 		menuOptionFunc: menuOptionFunc,
 		onSelectFunc:   onSelectFunc,
 		expaned:        true,
-	}
+	}, nil
 
 }
 

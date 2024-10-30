@@ -114,7 +114,7 @@ func newHome(window *app.Window) *HomeView {
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Editor Example", EditorExampleViewID, false))
 	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "File Explorer", ExplorerViewID, false))
 
-	fileTree := explorer.NewEntryNavItem("../../", nil, nil)
+	fileTree, _ := explorer.NewEntryNavItem("../../", nil, nil)
 	sidebar.AddSection(explorer.NewFileTreeNav(sidebar, "File Explorer", fileTree))
 
 	vm.Register(ExampleViewID, func() view.View { return NewExampleView(vm) })
