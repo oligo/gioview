@@ -50,7 +50,8 @@ type ImageSource struct {
 	// cache the last scaled image
 	cache *paint.ImageOp
 	// onLoaded is a callback called when image data is loaded.
-	onLoaded func()
+	onLoaded       func()
+	onLoadedRedraw func()
 	// Select the quality of the scaled image.
 	ScaleQuality Quality
 	// Choose whether to buffer src image or not. Buffering reduces frequent
@@ -106,6 +107,10 @@ func (img *ImageSource) load() {
 			if img.isLoading.CompareAndSwap(true, false) {
 				if img.onLoaded != nil {
 					img.onLoaded()
+				}
+
+				if img.onLoadedRedraw != nil {
+					img.onLoadedRedraw()
 				}
 			}
 		}()
@@ -240,4 +245,12 @@ func (img *ImageSource) ScaleRatio() float32 {
 
 func (img *ImageSource) Format() string {
 	return img.format
+}
+
+func (img *ImageSource) Location() string {
+	return img.location
+}
+
+func (img *ImageSource) OnLoaded(callback func()) {
+	img.onLoaded = callback
 }

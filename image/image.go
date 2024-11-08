@@ -25,8 +25,8 @@ type ImageStyle struct {
 }
 
 func (img ImageStyle) Layout(gtx layout.Context) layout.Dimensions {
-	if img.Src != nil && img.Src.onLoaded == nil {
-		img.Src.onLoaded = func() {
+	if img.Src != nil && img.Src.onLoadedRedraw == nil {
+		img.Src.onLoadedRedraw = func() {
 			gtx.Execute(op.InvalidateCmd{})
 		}
 	}
