@@ -85,21 +85,21 @@ func (vw *ExampleView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimens
 			layout.Rigid(layout.Spacer{Height: unit.Dp(10)}.Layout),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return D{}
+				// if vw.img == nil {
+				// 	vw.img = loadImg(vw.vm)
+				// }
 
-				if vw.img == nil {
-					vw.img = loadImg(vw.vm)
-				}
-
-				//sz := 480
-				//gtx.Constraints = layout.Exact(image.Pt(sz, sz))
-				// gtx.Constraints.Max.X = 500
-				// gtx.Constraints.Min = gtx.Constraints.Max
-				return gioimg.ImageStyle{
-					Src:      vw.img,
-					Radius:   unit.Dp(12),
-					Fit:      widget.Contain,
-					Position: layout.N,
-				}.Layout(gtx)
+				// //sz := 480
+				// //gtx.Constraints = layout.Exact(image.Pt(sz, sz))
+				// // gtx.Constraints.Max.X = 500
+				// // gtx.Constraints.Min = gtx.Constraints.Max
+				// return gioimg.ImageStyle{
+				// 	Src:      vw.img,
+				// 	Radius:   unit.Dp(12),
+				// 	Fit:      widget.Contain,
+				// 	Position: layout.N,
+				// }.Layout(gtx)
 			}),
 
 			layout.Rigid(layout.Spacer{Height: unit.Dp(25)}.Layout),

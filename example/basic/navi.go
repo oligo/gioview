@@ -1,13 +1,8 @@
-package navi
+package main
 
 import (
 	"image/color"
-	"log"
 	"slices"
-
-	"github.com/oligo/gioview/misc"
-	"github.com/oligo/gioview/theme"
-	"github.com/oligo/gioview/view"
 
 	"gioui.org/font"
 	"gioui.org/layout"
@@ -16,16 +11,22 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/oligo/gioview/explorer"
+	"github.com/oligo/gioview/menu"
+	"github.com/oligo/gioview/misc"
+	"github.com/oligo/gioview/navi"
+	"github.com/oligo/gioview/theme"
+	"github.com/oligo/gioview/view"
 )
 
-type (
-	C = layout.Context
-	D = layout.Dimensions
-)
+type NavSection interface {
+	Title() string
+	Layout(gtx C, th *theme.Theme) D
+}
 
 type NavDrawer struct {
 	vm           view.ViewManager
-	selectedItem *NavItemStyle
+	selectedItem *navi.NavTree
 	listItems    []NavSection
 	listState    *widget.List
 
@@ -40,6 +41,20 @@ type NaviDrawerStyle struct {
 	Width unit.Dp
 }
 
+type FileTreeNav struct {
+	title string
+	root  *navi.NavTree
+}
+
+type simpleItemSection struct {
+	item *navi.NavTree
+}
+
+type simpleNavItem struct {
+	icon *widget.Icon
+	name string
+}
+
 func NewNavDrawer(vm view.ViewManager) *NavDrawer {
 	return &NavDrawer{
 		vm: vm,
@@ -52,13 +67,11 @@ func NewNavDrawer(vm view.ViewManager) *NavDrawer {
 }
 
 func (nv *NavDrawer) AddSection(item NavSection) {
-	item.Attach(nv)
 	nv.listItems = append(nv.listItems, item)
 }
 
 func (nv *NavDrawer) InsertAt(index int, item NavSection) {
 	nv.listItems = slices.Insert(nv.listItems, index, []NavSection{item}...)
-	item.Attach(nv)
 }
 
 func (nv *NavDrawer) RemoveSection(index int) {
@@ -103,20 +116,12 @@ func (nv *NavDrawer) Layout(gtx C, th *theme.Theme) D {
 	})
 }
 
-func (nv *NavDrawer) OnItemSelected(gtx C, item *NavItemStyle) {
+func (nv *NavDrawer) OnItemSelected(item *navi.NavTree) {
 	if item != nv.selectedItem {
 		if nv.selectedItem != nil {
 			nv.selectedItem.Unselect()
 		}
 		nv.selectedItem = item
-	}
-
-	if item != nil {
-		intent := item.item.OnSelect(gtx)
-		// An empty also refresh the UI so do not drop it.
-		if err := nv.vm.RequestSwitch(intent); err != nil {
-			log.Printf("switching to view %s error: %v", intent.Target, err)
-		}
 	}
 }
 
@@ -143,4 +148,48 @@ func (ns NaviDrawerStyle) Layout(gtx C, th *theme.Theme) D {
 		return ns.NavDrawer.Layout(gtx, th)
 	})
 
+}
+
+func (item simpleNavItem) Layout(gtx C, th *theme.Theme, textColor color.NRGBA) D {
+	label := material.Label(th.Theme, th.TextSize, item.name)
+	label.Color = textColor
+	return label.Layout(gtx)
+}
+
+func (item simpleNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool) {
+	return nil, false
+}
+
+func (item simpleNavItem) Children() []navi.NavItem {
+	return nil
+}
+
+func (ss simpleItemSection) Title() string {
+	return ""
+}
+
+func (ss simpleItemSection) Layout(gtx C, th *theme.Theme) D {
+	return ss.item.Layout(gtx, th)
+}
+
+func SimpleItemSection(icon *widget.Icon, name string, onSelect func(item *navi.NavTree)) NavSection {
+	item := navi.NewNavItem(simpleNavItem{icon: icon, name: name}, onSelect)
+	return simpleItemSection{item: item}
+}
+
+// Construct a FileTreeNav object that loads files and folders from rootDir. The skipFolders
+// parameter allows you to specify folder name prefixes to exclude from the navigation.
+func NewFileTreeNav(title string, navRoot *explorer.EntryNavItem, onClick func(item *navi.NavTree)) *FileTreeNav {
+	return &FileTreeNav{
+		title: title,
+		root:  navi.NewNavItem(navRoot, onClick),
+	}
+}
+
+func (tn *FileTreeNav) Title() string {
+	return tn.title
+}
+
+func (tn *FileTreeNav) Layout(gtx C, th *theme.Theme) D {
+	return tn.root.Layout(gtx, th)
 }

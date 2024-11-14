@@ -16,7 +16,11 @@ import (
 	"github.com/oligo/gioview/menu"
 	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/theme"
-	"github.com/oligo/gioview/view"
+)
+
+type (
+	C = layout.Context
+	D = layout.Dimensions
 )
 
 var (
@@ -30,25 +34,16 @@ var NavItemPadding = layout.Inset{
 	Bottom: unit.Dp(1),
 }
 
-type NavSection interface {
-	Title() string
-	Layout(gtx C, th *theme.Theme) D
-	Attach(d *NavDrawer)
-}
-
 type NavItem interface {
-	OnSelect(gtx layout.Context) view.Intent
-	Icon() *widget.Icon
 	Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D
 	// when there's menu options, a context menu should be attached to this navItem.
 	// The returned boolean value suggest the position of the popup menu should be at
-	// fixed position or not. NavItemStyle should place a clickable icon to guide user interactions.
+	// fixed position or not. NavTree should place a clickable icon to guide user interactions.
 	ContextMenuOptions(gtx layout.Context) ([][]menu.MenuOption, bool)
 	Children() []NavItem
 }
 
-type NavItemStyle struct {
-	drawer      *NavDrawer
+type NavTree struct {
 	item        NavItem
 	label       *list.InteractiveLabel
 	menu        *menu.ContextMenu
@@ -56,18 +51,19 @@ type NavItemStyle struct {
 	showMenuBtn widget.Clickable
 
 	childList layout.List
-	children  []*NavItemStyle
+	children  []*NavTree
+	OnClicked func(item *NavTree)
 }
 
-func (n *NavItemStyle) IsSelected() bool {
+func (n *NavTree) IsSelected() bool {
 	return n.label.IsSelected()
 }
 
-func (n *NavItemStyle) Unselect() {
+func (n *NavTree) Unselect() {
 	n.label.Unselect()
 }
 
-func (n *NavItemStyle) Update(gtx C) bool {
+func (n *NavTree) Update(gtx C) bool {
 	if n.menu == nil {
 		menuOpts, fixPos := n.item.ContextMenuOptions(gtx)
 		if len(menuOpts) > 0 {
@@ -78,32 +74,20 @@ func (n *NavItemStyle) Update(gtx C) bool {
 	}
 
 	// handle naviitem events
-	if n.label.Update(gtx) {
-		n.drawer.OnItemSelected(gtx, n)
+	if n.label.Update(gtx) && n.OnClicked != nil {
+		n.OnClicked(n)
 		return true
 	}
 
 	return false
 }
 
-func (n *NavItemStyle) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Dimensions {
+func (n *NavTree) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Dimensions {
 	macro := op.Record(gtx.Ops)
 	dims := layout.Inset{Bottom: unit.Dp(2)}.Layout(gtx, func(gtx C) D {
 		return n.label.Layout(gtx, th, func(gtx C, color color.NRGBA) D {
 			return NavItemPadding.Layout(gtx, func(gtx C) D {
 				return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-					layout.Rigid(func(gtx C) D {
-						if n.item.Icon() == nil {
-							return layout.Dimensions{}
-						}
-						return layout.Inset{Right: unit.Dp(6)}.Layout(gtx, func(gtx C) D {
-							iconColor := th.ContrastBg
-							if n.label.IsSelected() {
-								iconColor = th.ContrastFg
-							}
-							return misc.Icon{Icon: n.item.Icon(), Color: iconColor, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
-						})
-					}),
 					layout.Flexed(1, func(gtx C) D {
 						return layout.W.Layout(gtx, func(gtx C) D {
 							return n.item.Layout(gtx, th, color)
@@ -143,7 +127,7 @@ func (n *NavItemStyle) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Di
 	return dims
 }
 
-func (n *NavItemStyle) Layout(gtx C, th *theme.Theme) D {
+func (n *NavTree) Layout(gtx C, th *theme.Theme) D {
 	if n.label == nil {
 		n.label = &list.InteractiveLabel{}
 	}
@@ -158,7 +142,7 @@ func (n *NavItemStyle) Layout(gtx C, th *theme.Theme) D {
 	if len(n.children) != len(itemChildren) {
 		n.children = n.children[:0]
 		for _, child := range itemChildren {
-			n.children = append(n.children, NewNavItem(child, n.drawer))
+			n.children = append(n.children, NewNavItem(child, n.OnClicked))
 		}
 	}
 
@@ -187,63 +171,13 @@ func (n *NavItemStyle) Layout(gtx C, th *theme.Theme) D {
 
 }
 
-func NewNavItem(item NavItem, drawer *NavDrawer) *NavItemStyle {
-	style := &NavItemStyle{
+func NewNavItem(item NavItem, onClicked func(item *NavTree)) *NavTree {
+	style := &NavTree{
 		item:       item,
 		label:      &list.InteractiveLabel{},
-		drawer:     drawer,
 		fixMenuPos: false,
+		OnClicked:  onClicked,
 	}
 
 	return style
-}
-
-type simpleItemSection struct {
-	item *NavItemStyle
-}
-
-type simpleNavItem struct {
-	icon        *widget.Icon
-	name        string
-	targetView  view.ViewID
-	openAsModal bool
-}
-
-func (item simpleNavItem) OnSelect(gtx C) view.Intent {
-	return view.Intent{Target: item.targetView, ShowAsModal: item.openAsModal}
-}
-
-func (item simpleNavItem) Icon() *widget.Icon {
-	return item.icon
-}
-
-func (item simpleNavItem) Layout(gtx C, th *theme.Theme, textColor color.NRGBA) D {
-	label := material.Label(th.Theme, th.TextSize, item.name)
-	label.Color = textColor
-	return label.Layout(gtx)
-}
-
-func (item simpleNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool) {
-	return nil, false
-}
-
-func (item simpleNavItem) Children() []NavItem {
-	return nil
-}
-
-func (ss simpleItemSection) Title() string {
-	return ""
-}
-
-func (ss simpleItemSection) Layout(gtx C, th *theme.Theme) D {
-	return ss.item.Layout(gtx, th)
-}
-
-func (ss simpleItemSection) Attach(d *NavDrawer) {
-	ss.item.drawer = d
-}
-
-func SimpleItemSection(icon *widget.Icon, name string, targetView view.ViewID, openAsModal bool) NavSection {
-	item := NewNavItem(simpleNavItem{icon: icon, name: name, targetView: targetView, openAsModal: openAsModal}, nil)
-	return simpleItemSection{item: item}
 }

@@ -17,7 +17,7 @@ import (
 
 type HomeView struct {
 	view.ViewManager
-	sidebar      *navi.NavDrawer
+	sidebar      *NavDrawer
 	tabbar       *navi.Tabbar
 	currentModal *view.ModalView
 }
@@ -41,7 +41,7 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 	}.Layout(gtx,
 		// navdrawer
 		layout.Rigid(func(gtx C) D {
-			return navi.NaviDrawerStyle{
+			return NaviDrawerStyle{
 				NavDrawer: hv.sidebar,
 				Inset: layout.Inset{
 					Top:    unit.Dp(20),
@@ -109,13 +109,31 @@ func newHome(window *app.Window) *HomeView {
 
 	fileChooser, _ = explorer.NewFileChooser(vm)
 
-	sidebar := navi.NewNavDrawer(vm)
-	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Tabviews & Image", ExampleViewID, false))
-	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "Editor Example", EditorExampleViewID, false))
-	sidebar.AddSection(navi.SimpleItemSection(viewIcon, "File Explorer", ExplorerViewID, false))
+	sidebar := NewNavDrawer(vm)
+	sidebar.AddSection(SimpleItemSection(viewIcon, "Tabviews & Image", func(item *navi.NavTree) {
+		sidebar.OnItemSelected(item)
+		intent := view.Intent{Target: ExampleViewID, ShowAsModal: false}
+		_ = vm.RequestSwitch(intent)
+	}))
+
+	sidebar.AddSection(SimpleItemSection(viewIcon, "Editor Example", func(item *navi.NavTree) {
+		sidebar.OnItemSelected(item)
+		intent := view.Intent{Target: EditorExampleViewID, ShowAsModal: false}
+		_ = vm.RequestSwitch(intent)
+	}))
+
+	sidebar.AddSection(SimpleItemSection(viewIcon, "File Explorer", func(item *navi.NavTree) {
+		sidebar.OnItemSelected(item)
+		intent := view.Intent{Target: ExplorerViewID, ShowAsModal: false}
+		_ = vm.RequestSwitch(intent)
+	}))
 
 	fileTree, _ := explorer.NewEntryNavItem("../../", nil, nil)
-	sidebar.AddSection(explorer.NewFileTreeNav(sidebar, "File Explorer", fileTree))
+	sidebar.AddSection(NewFileTreeNav("File Explorer", fileTree, func(item *navi.NavTree) {
+		sidebar.OnItemSelected(item)
+		//intent := view.Intent{Target: EditorExampleViewID, ShowAsModal: false}
+		//_ = vm.RequestSwitch(intent)
+	}))
 
 	vm.Register(ExampleViewID, func() view.View { return NewExampleView(vm) })
 	vm.Register(EditorExampleViewID, NewEditorExample)

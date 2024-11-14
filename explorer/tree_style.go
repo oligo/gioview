@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"gioui.org/gesture"
 	"gioui.org/io/clipboard"
 	"gioui.org/io/event"
 	"gioui.org/io/key"
@@ -20,11 +21,12 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/unit"
 	"gioui.org/widget"
 	"github.com/oligo/gioview/menu"
+	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/navi"
 	"github.com/oligo/gioview/theme"
-	"github.com/oligo/gioview/view"
 	gv "github.com/oligo/gioview/widget"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
@@ -40,16 +42,11 @@ var (
 	fileIcon, _       = widget.NewIcon(icons.ActionDescription)
 )
 
-var _ navi.NavSection = (*FileTreeNav)(nil)
 var _ navi.NavItem = (*EntryNavItem)(nil)
-
-type FileTreeNav struct {
-	title string
-	root  *navi.NavItemStyle
-}
 
 type EntryNavItem struct {
 	state          *EntryNode
+	click          gesture.Click
 	menuOptionFunc MenuOptionFunc
 	onSelectFunc   OnSelectFunc
 
@@ -62,28 +59,7 @@ type EntryNavItem struct {
 }
 
 type MenuOptionFunc func(gtx C, item *EntryNavItem) [][]menu.MenuOption
-type OnSelectFunc func(item *EntryNode) view.Intent
-
-// Construct a FileTreeNav object that loads files and folders from rootDir. The skipFolders
-// parameter allows you to specify folder name prefixes to exclude from the navigation.
-func NewFileTreeNav(drawer *navi.NavDrawer, title string, navRoot *EntryNavItem) *FileTreeNav {
-	return &FileTreeNav{
-		title: title,
-		root:  navi.NewNavItem(navRoot, drawer),
-	}
-}
-
-func (tn *FileTreeNav) Attach(drawer *navi.NavDrawer) {
-	// NOOP
-}
-
-func (tn *FileTreeNav) Title() string {
-	return tn.title
-}
-
-func (tn *FileTreeNav) Layout(gtx C, th *theme.Theme) D {
-	return tn.root.Layout(gtx, th)
-}
+type OnSelectFunc func(item *EntryNode)
 
 // Construct a file tree object that loads files and folders from rootDir.
 // `menuOptionFunc` is used to define the operations allowed by context menu(use right click to active it).
@@ -104,7 +80,7 @@ func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc
 
 }
 
-func (eitem *EntryNavItem) Icon() *widget.Icon {
+func (eitem *EntryNavItem) icon() *widget.Icon {
 	if eitem.state.Kind() == FolderNode {
 		if eitem.expaned {
 			return folderOpenIcon
@@ -115,18 +91,15 @@ func (eitem *EntryNavItem) Icon() *widget.Icon {
 	return fileIcon
 }
 
-func (eitem *EntryNavItem) OnSelect(gtx C) view.Intent {
+func (eitem *EntryNavItem) OnSelect() {
 	eitem.expaned = !eitem.expaned
 	if eitem.expaned {
 		eitem.needSync = true
 	}
 
 	if eitem.state.Kind() == FileNode && eitem.onSelectFunc != nil {
-		return eitem.onSelectFunc(eitem.state)
+		eitem.onSelectFunc(eitem.state)
 	}
-
-	return view.Intent{}
-
 }
 
 func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D {
@@ -159,7 +132,24 @@ func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor
 
 	eitem.label.Color = textColor
 	eitem.label.TextSize = th.TextSize
-	return eitem.label.Layout(gtx, th)
+
+	return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+		layout.Rigid(func(gtx C) D {
+			if eitem.icon() == nil {
+				return layout.Dimensions{}
+			}
+			return layout.Inset{Right: unit.Dp(6)}.Layout(gtx, func(gtx C) D {
+				iconColor := th.ContrastBg
+				return misc.Icon{Icon: eitem.icon(), Color: iconColor, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
+			})
+		}),
+		layout.Flexed(1, func(gtx C) D {
+			return layout.W.Layout(gtx, func(gtx C) D {
+				return eitem.label.Layout(gtx, th)
+			})
+		}),
+	)
+
 }
 
 func (eitem *EntryNavItem) IsDir() bool {
@@ -334,6 +324,7 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 	for {
 		ke, ok := gtx.Event(
 			// focus conflicts with editable. so subscribe editable's key events here.
+			pointer.Filter{Target: eitem, Kinds: pointer.Press | pointer.Release},
 			key.Filter{Focus: eitem.label, Name: "C", Required: key.ModShortcut},
 			key.Filter{Focus: eitem.label, Name: "V", Required: key.ModShortcut},
 			key.Filter{Focus: eitem.label, Name: "X", Required: key.ModShortcut},
@@ -380,6 +371,10 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 						}
 					}
 				}
+			}
+		case pointer.Event:
+			if event.Buttons.Contain(pointer.ButtonPrimary) && event.Kind == pointer.Press {
+				eitem.OnSelect()
 			}
 
 		}
