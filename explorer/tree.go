@@ -261,6 +261,13 @@ func (n *EntryNode) Move(nodePath string) error {
 		return err
 	}
 
+	// if nodePath is a descendant of the root tree, refresh its parent to clean dirty nodes.
+	parent := findNodeInTree(n, filepath.Dir(nodePath))
+	if parent != nil && parent != n {
+		log.Println("hhhh rereshed: ", parent.Path)
+		parent.Refresh(hiddenFileFilter)
+	}
+
 	return n.Refresh(hiddenFileFilter)
 }
 
@@ -287,6 +294,8 @@ func (n *EntryNode) UpdateName(newName string) error {
 	newPath := filepath.Join(filepath.Dir(n.Path), newName)
 	defer func() {
 		n.Path = filepath.Clean(newPath)
+		st, _ := os.Stat(n.Path)
+		n.FileInfo = st
 	}()
 
 	return os.Rename(n.Path, newPath)
@@ -496,4 +505,97 @@ func copySymLink(src, dst string) error {
 		return err
 	}
 	return os.Symlink(link, dst)
+}
+
+// find longest common path for path1 and path2. path1 and path2 must be
+// absolute paths.
+func longestCommonPath(path1, path2 string) string {
+	if path1 == path2 {
+		return path1
+	}
+
+	lastSeq := -1
+	idx := 0
+	for i := 0; i < min(len(path1), len(path2)); i++ {
+		if path1[i] != path2[i] {
+			break
+		}
+
+		idx = i
+		if path1[i] == os.PathSeparator {
+			lastSeq = i
+		}
+	}
+
+	if lastSeq < 0 {
+		return ""
+	}
+
+	if idx > lastSeq && idx == min(len(path1), len(path2))-1 {
+		if len(path1) > len(path2) && path1[idx+1] == os.PathSeparator {
+			return path1[:idx+1]
+
+		} else if len(path2) > len(path1) && path2[idx+1] == os.PathSeparator {
+			return path2[:idx+1]
+		}
+	}
+
+	// without the trailing seqarator.
+	return path1[:lastSeq]
+
+}
+
+// find the node that has its Path equals path.
+// The node is an artitary node of a tree.
+func findNodeInTree(node *EntryNode, path string) *EntryNode {
+	log.Println("running findNodeInTree: ", node.Path, path)
+
+	if path == node.Path {
+		return node
+	}
+
+	commonPath := longestCommonPath(node.Path, path)
+	if commonPath == "" {
+		return nil
+	}
+
+	commonNode := node
+	for {
+		if commonNode.Path == commonPath {
+			break
+		}
+
+		commonNode = commonNode.Parent
+		if commonNode == nil {
+			return nil
+		}
+	}
+
+	if commonNode.Path == path {
+		return commonNode
+	}
+
+	// search decencents
+	children := commonNode.children
+LOOP:
+	for len(children) > 0 {
+		for _, child := range children {
+			if child.Path == path {
+				return child
+			}
+			if child.Path == node.Path {
+				continue
+			}
+			if len(child.children) > 0 {
+				children = child.children
+				log.Println("loop: ", child.Path)
+
+				goto LOOP
+			}
+		}
+		break
+	}
+
+	return nil
+
 }
