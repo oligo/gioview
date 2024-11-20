@@ -377,20 +377,25 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 
 		case transfer.DataEvent:
 			// read the clipboard content:
+			reader := event.Open()
+			defer reader.Close()
+			content, err := io.ReadAll(reader)
+			if err != nil {
+				return err
+			}
+
 			defer gtx.Execute(op.InvalidateCmd{})
 
+			//FIXME: clipboard data might be invalid file path.
 			if event.Type == mimeText {
-				p, err := toPayload(event.Open())
+				p, err := toPayload(content)
 				if err == nil {
 					if err := eitem.OnPaste(p.Data, p.IsCut, p.GetSrc()); err != nil {
 						return err
 					}
 				} else {
-					content, err := io.ReadAll(event.Open())
-					if err == nil {
-						if err := eitem.OnPaste(string(content), false, nil); err != nil {
-							return err
-						}
+					if err := eitem.OnPaste(string(content), false, nil); err != nil {
+						return err
 					}
 				}
 			}
@@ -431,11 +436,9 @@ func asPayload(src *EntryNavItem, data string, isCut bool) io.Reader {
 	return strings.NewReader(buf.String())
 }
 
-func toPayload(reader io.ReadCloser) (*payload, error) {
+func toPayload(buf []byte) (*payload, error) {
 	p := payload{}
-	defer reader.Close()
-
-	err := json.NewDecoder(reader).Decode(&p)
+	err := json.Unmarshal(buf, &p)
 	if err != nil {
 		return nil, err
 	}
