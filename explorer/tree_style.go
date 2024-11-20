@@ -10,6 +10,7 @@ import (
 	"log"
 	"slices"
 	"strings"
+	"unsafe"
 
 	"gioui.org/gesture"
 	"gioui.org/io/clipboard"
@@ -95,6 +96,14 @@ func (eitem *EntryNavItem) OnSelect() {
 	eitem.expaned = !eitem.expaned
 	if eitem.expaned {
 		eitem.needSync = true
+
+		for _, child := range eitem.children {
+			child := child.(*EntryNavItem)
+			if child.isCut {
+				child.isCut = false
+			}
+		}
+
 	}
 
 	if eitem.state.Kind() == FileNode && eitem.onSelectFunc != nil {
@@ -112,7 +121,7 @@ func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor
 	defer pointer.PassOp{}.Push(gtx.Ops).Pop()
 	defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
 	if eitem.isCut {
-		defer paint.PushOpacity(gtx.Ops, 0.7).Pop()
+		defer paint.PushOpacity(gtx.Ops, 0.6).Pop()
 	}
 	event.Op(gtx.Ops, eitem)
 	call.Add(gtx.Ops)
@@ -144,9 +153,8 @@ func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor
 			})
 		}),
 		layout.Flexed(1, func(gtx C) D {
-			return layout.W.Layout(gtx, func(gtx C) D {
-				return eitem.label.Layout(gtx, th)
-			})
+			gtx.Constraints.Min.X = gtx.Constraints.Max.X
+			return eitem.label.Layout(gtx, th)
 		}),
 	)
 
@@ -292,31 +300,45 @@ func (eitem *EntryNavItem) Kind() NodeKind {
 }
 
 // read data from clipboard.
-func (eitem *EntryNavItem) OnPaste(data string, removeOld bool) error {
+func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavItem) error {
+	// when paste destination is a normal file node, use its parent dir to ease the CUT/COPY operations.
+	dest := eitem
+	if !eitem.IsDir() && eitem.parent != nil {
+		dest = eitem.parent.(*EntryNavItem)
+	}
+
 	pathes := strings.Split(string(data), "\n")
 	if removeOld {
 		for _, p := range pathes {
-			err := eitem.state.Move(p)
+			err := dest.state.Move(p)
 			if err != nil {
 				return err
+			}
+
+			if src != nil && src.parent != nil {
+				parent := src.parent.(*EntryNavItem)
+				parent.children = slices.DeleteFunc(parent.children, func(chd navi.NavItem) bool {
+					entry := chd.(*EntryNavItem)
+					return entry.Path() == p
+				})
 			}
 		}
 	} else {
 		for _, p := range pathes {
-			err := eitem.state.Copy(p)
+			err := dest.state.Copy(p)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	eitem.needSync = true
-	eitem.expaned = true
+	dest.needSync = true
+	dest.expaned = true
 	return nil
 }
 
 func (eitem *EntryNavItem) OnCopyOrCut(gtx C, isCut bool) {
-	gtx.Execute(clipboard.WriteCmd{Type: mimeText, Data: io.NopCloser(asPayload(eitem.Path(), isCut))})
+	gtx.Execute(clipboard.WriteCmd{Type: mimeText, Data: io.NopCloser(asPayload(eitem, eitem.Path(), isCut))})
 	eitem.isCut = isCut
 }
 
@@ -338,7 +360,7 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 
 		switch event := ke.(type) {
 		case key.Event:
-			if !event.Modifiers.Contain(key.ModShortcut) || event.State != key.Press {
+			if !event.Modifiers.Contain(key.ModShortcut) {
 				break
 			}
 
@@ -360,13 +382,13 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 			if event.Type == mimeText {
 				p, err := toPayload(event.Open())
 				if err == nil {
-					if err := eitem.OnPaste(p.Data, p.IsCut); err != nil {
+					if err := eitem.OnPaste(p.Data, p.IsCut, p.GetSrc()); err != nil {
 						return err
 					}
 				} else {
 					content, err := io.ReadAll(event.Open())
 					if err == nil {
-						if err := eitem.OnPaste(string(content), false); err != nil {
+						if err := eitem.OnPaste(string(content), false, nil); err != nil {
 							return err
 						}
 					}
@@ -389,12 +411,17 @@ const (
 )
 
 type payload struct {
-	IsCut bool   `json:"isCut"`
-	Data  string `json:"data"`
+	IsCut bool    `json:"isCut"`
+	Data  string  `json:"data"`
+	Src   uintptr `json:"src"`
 }
 
-func asPayload(data string, isCut bool) io.Reader {
-	p := payload{Data: data, IsCut: isCut}
+func (p *payload) GetSrc() *EntryNavItem {
+	return (*EntryNavItem)(unsafe.Pointer(p.Src))
+}
+
+func asPayload(src *EntryNavItem, data string, isCut bool) io.Reader {
+	p := payload{Data: data, IsCut: isCut, Src: uintptr(unsafe.Pointer(src))}
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(p)
 	if err != nil {
