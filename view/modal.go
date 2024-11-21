@@ -10,7 +10,6 @@ import (
 	"github.com/oligo/gioview/theme"
 
 	"gioui.org/io/event"
-	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -76,22 +75,6 @@ func (m *ModalView) ShowUp(gtx layout.Context) {
 func (m *ModalView) update(gtx layout.Context) bool {
 	if m.closeBtn.Clicked(gtx) {
 		m.closed = true
-	}
-
-	// Dismiss the contextual widget if the user clicked outside of it.
-	for {
-		_, ok := gtx.Event(
-			pointer.Filter{Target: m, Kinds: pointer.Press})
-		if !ok {
-			break
-		}
-		// e, ok := e.(pointer.Event)
-		// if !ok {
-		// 	continue
-		// }
-		// if e.Type == pointer.Press {
-		// 	m.closed = true
-		// }
 	}
 
 	if m.View.Finished() {
@@ -161,15 +144,6 @@ func (m *ModalView) Layout(gtx layout.Context, th *theme.Theme) layout.Dimension
 	}()
 	op.Defer(gtx.Ops, modalAreaOps)
 
-	// Capture pointer events in the modal area.
-	// defer pointer.PassOp{}.Push(gtx.Ops).Pop()
-	// defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Min}).Push(gtx.Ops).Pop()
-	// pointer.InputOp{
-	// 	Tag:   m,
-	// 	Grab:  false,
-	// 	Types: pointer.Press | pointer.Release,
-	// }.Add(gtx.Ops)
-
 	return dims
 }
 
@@ -184,9 +158,8 @@ func (m *ModalView) layoutView(gtx layout.Context, th *theme.Theme) layout.Dimen
 
 	gtx.Constraints.Max.X = min(gtx.Constraints.Max.X, gtx.Dp(m.MaxWidth))
 	gtx.Constraints.Max.Y = int(float32(gtx.Constraints.Max.Y) * min(0.9, m.MaxHeight))
-	gtx.Constraints.Min = gtx.Constraints.Max
-
-	// m.modalList.Axis = layout.Vertical
+	gtx.Constraints.Min.X = gtx.Constraints.Max.X
+	gtx.Constraints.Min.Y = 0
 
 	return m.Padding.Layout(gtx, func(gtx C) D {
 		return layout.Flex{
