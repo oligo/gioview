@@ -24,8 +24,9 @@ import (
 type TabEvent string
 
 var (
-	arrowIcon, _ = widget.NewIcon(icons.NavigationArrowBack)
-	closeIcon, _ = widget.NewIcon(icons.NavigationClose)
+	backwardIcon, _ = widget.NewIcon(icons.NavigationArrowBack)
+	forwardIcon, _  = widget.NewIcon(icons.NavigationArrowForward)
+	closeIcon, _    = widget.NewIcon(icons.NavigationClose)
 )
 
 const (
@@ -34,16 +35,20 @@ const (
 )
 
 type TabbarOptions struct {
+	MaxTabWidth       unit.Dp
 	Height            unit.Dp
 	MaxVisibleActions int
 }
 
 type Tabbar struct {
-	vm       view.ViewManager
-	arrowBtn widget.Clickable
-	list     *layout.List
-	tabs     []*Tab
-	options  *TabbarOptions
+	vm          view.ViewManager
+	backwardBtn widget.Clickable
+	forwardBtn  widget.Clickable
+	list        *layout.List
+	tabs        []*Tab
+	options     *TabbarOptions
+	// calculated tab width
+	tabWidth int
 }
 
 type Tab struct {
@@ -59,15 +64,6 @@ type Tab struct {
 }
 
 func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
-	if tb.arrowBtn.Clicked(gtx) {
-		tb.vm.NavBack()
-	}
-
-	arrowAlpha := 0xb6
-	if !tb.vm.HasPrev() {
-		arrowAlpha = 0x30
-	}
-
 	tabViews := tb.vm.OpenedViews()
 	if len(tb.tabs) != len(tabViews) {
 		// rebuilding tabs
@@ -101,10 +97,14 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 		}
 	}
 
+	if len(tb.tabs) <= 0 {
+		return D{}
+	}
+
 	gtx.Constraints.Max.Y = gtx.Dp(tb.options.Height)
 	gtx.Constraints.Min = gtx.Constraints.Max
 	rect := clip.Rect(image.Rectangle{Max: gtx.Constraints.Max})
-	paint.FillShape(gtx.Ops, misc.WithAlpha(th.Bg, 0x20), rect.Op())
+	paint.FillShape(gtx.Ops, th.Bg, rect.Op())
 
 	return layout.Flex{
 		Axis: layout.Vertical,
@@ -114,32 +114,8 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 				Axis:      layout.Horizontal,
 				Alignment: layout.Middle,
 			}.Layout(gtx,
-				layout.Rigid(func(gtx C) D {
-					if !tb.vm.HasPrev() {
-						return D{}
-					}
-
-					return layout.Inset{
-						Left:  unit.Dp(10),
-						Right: unit.Dp(10),
-					}.Layout(gtx, func(gtx C) D {
-						// arrow symbol
-						return layout.Center.Layout(gtx, func(gtx C) D {
-							return material.Clickable(gtx, &tb.arrowBtn, func(gtx C) D {
-								return misc.Icon{Icon: arrowIcon, Color: misc.WithAlpha(th.Fg, uint8(arrowAlpha))}.Layout(gtx, th)
-							})
-						})
-					})
-				}),
 				layout.Flexed(0.8, func(gtx C) D {
-					// FIXME: As pointed out in this todo, layout.List does not scroll when laid out horizontally:
-					// https://todo.sr.ht/~eliasnaur/gio/530
-					// UPDATE: As https://todo.sr.ht/~eliasnaur/gio/398 and https://git.sr.ht/~eliasnaur/gio/commit/febadd3 pointed out,
-					// You can scoll horizontally using a wheel with the shift key pressed.
-					// But scroll without pressing a shift key would be better.
-					return tb.list.Layout(gtx, len(tb.tabs), func(gtx C, index int) D {
-						return tb.tabs[index].Layout(gtx, th)
-					})
+					return tb.layoutTabs(gtx, th)
 				}),
 
 				layout.Flexed(0.2, func(gtx C) D {
@@ -151,6 +127,80 @@ func (tb *Tabbar) Layout(gtx C, th *theme.Theme) D {
 		}),
 		layout.Rigid(func(gtx C) D {
 			return misc.Divider(layout.Horizontal, unit.Dp(0.5)).Layout(gtx, th)
+		}),
+	)
+
+}
+
+func (tb *Tabbar) layoutTabs(gtx C, th *theme.Theme) D {
+
+	if tb.backwardBtn.Clicked(gtx) {
+		if tb.list.Position.First > 0 {
+			tb.list.ScrollBy(-1)
+		} else {
+			tb.list.ScrollBy(-float32(tb.list.Position.Offset) / float32(tb.tabWidth))
+		}
+	}
+	if tb.forwardBtn.Clicked(gtx) {
+		if tb.list.Position.Count+tb.list.Position.First < len(tb.tabs) {
+			tb.list.ScrollBy(1)
+		} else {
+			num := float32(tb.list.Position.OffsetLast) / float32(tb.tabWidth)
+			tb.list.ScrollBy(-num)
+		}
+	}
+
+	return layout.Flex{
+		Axis:      layout.Horizontal,
+		Alignment: layout.Middle,
+	}.Layout(gtx,
+		layout.Rigid(layout.Spacer{Width: unit.Dp(2)}.Layout),
+
+		layout.Rigid(func(gtx C) D {
+			arrowAlpha := 0x30
+			if tb.list.Position.Offset > 0 {
+				arrowAlpha = 0xff
+			}
+
+			return layout.Center.Layout(gtx, func(gtx C) D {
+				return material.Clickable(gtx, &tb.backwardBtn, func(gtx C) D {
+					return misc.Icon{Icon: backwardIcon, Color: misc.WithAlpha(th.Fg, uint8(arrowAlpha))}.Layout(gtx, th)
+				})
+			})
+
+		}),
+		layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
+		layout.Rigid(func(gtx C) D {
+			arrowAlpha := 0x30
+			if tb.list.Position.OffsetLast < 0 {
+				arrowAlpha = 0xff
+			}
+
+			return layout.Center.Layout(gtx, func(gtx C) D {
+				return material.Clickable(gtx, &tb.forwardBtn, func(gtx C) D {
+					return misc.Icon{Icon: forwardIcon, Color: misc.WithAlpha(th.Fg, uint8(arrowAlpha))}.Layout(gtx, th)
+				})
+			})
+
+		}),
+		layout.Rigid(layout.Spacer{Width: unit.Dp(4)}.Layout),
+		layout.Flexed(1, func(gtx C) D {
+			// calculate tab width
+			tb.tabWidth = gtx.Dp(tb.options.MaxTabWidth)
+			if len(tb.tabs) > 0 {
+				tb.tabWidth = min(gtx.Constraints.Max.X/len(tb.tabs), tb.tabWidth)
+			}
+
+			// FIXME: As pointed out in this todo, layout.List does not scroll when laid out horizontally:
+			// https://todo.sr.ht/~eliasnaur/gio/530
+			// UPDATE: As https://todo.sr.ht/~eliasnaur/gio/398 and https://git.sr.ht/~eliasnaur/gio/commit/febadd3 pointed out,
+			// You can scoll horizontally using a wheel with the shift key pressed.
+			// But scroll without pressing a shift key would be better.
+			return tb.list.Layout(gtx, len(tb.tabs), func(gtx C, index int) D {
+				gtx.Constraints.Min.X = tb.tabWidth
+
+				return tb.tabs[index].Layout(gtx, th)
+			})
 		}),
 	)
 
@@ -175,6 +225,7 @@ func NewTabbar(vm view.ViewManager, options *TabbarOptions) *Tabbar {
 	if options == nil {
 		tb.options = &TabbarOptions{
 			Height:            unit.Dp(28),
+			MaxTabWidth:       unit.Dp(150),
 			MaxVisibleActions: 999, // unlimited visible actions
 		}
 	}
@@ -183,6 +234,9 @@ func NewTabbar(vm view.ViewManager, options *TabbarOptions) *Tabbar {
 	}
 	if tb.options.MaxVisibleActions < 0 {
 		tb.options.MaxVisibleActions = 0
+	}
+	if tb.options.MaxTabWidth <= 0 {
+		tb.options.MaxTabWidth = unit.Dp(150)
 	}
 
 	return tb
@@ -220,38 +274,40 @@ func (tab *Tab) Layout(gtx C, th *theme.Theme) D {
 			if tab.isSelected {
 				color = th.ContrastFg
 			}
-			return layout.Center.Layout(gtx, func(gtx C) D {
-				return layout.Inset{
-					Left:  unit.Dp(18),
-					Right: unit.Dp(2),
-				}.Layout(gtx, func(gtx C) D {
-					return layout.Flex{
-						Axis:      layout.Horizontal,
-						Alignment: layout.Middle,
-					}.Layout(gtx,
-						layout.Rigid(func(gtx C) D {
-							label := material.Label(th.Theme, th.TextSize*0.9, tab.vw.Title())
+			return layout.Inset{
+				Left:  unit.Dp(18),
+				Right: unit.Dp(2),
+			}.Layout(gtx, func(gtx C) D {
+				return layout.Flex{
+					Axis:      layout.Horizontal,
+					Alignment: layout.Middle,
+					Spacing:   layout.SpaceBetween,
+				}.Layout(gtx,
+					layout.Rigid(func(gtx C) D {
+						return layout.Center.Layout(gtx, func(gtx C) D {
+							label := material.Label(th.Theme, th.TextSize, tab.vw.Title())
 							label.Color = color
+							label.MaxLines = 1
 							return label.Layout(gtx)
-						}),
-						layout.Rigid(func(gtx C) D {
-							iconAlpha := uint8(1)
-							if tab.hovering {
-								iconAlpha = uint8(200)
-							}
-							return layout.Inset{Left: unit.Dp(4)}.Layout(gtx, func(gtx C) D {
-								return material.Clickable(gtx, &tab.closeBtn, func(gtx C) D {
-									return misc.Icon{Icon: closeIcon,
-										Color: misc.WithAlpha(color, iconAlpha),
-										Size:  max(16, unit.Dp(16*th.TextSize/14)),
-									}.Layout(gtx, th)
-								})
+						})
+					}),
+					layout.Rigid(func(gtx C) D {
+						iconAlpha := uint8(1)
+						if tab.hovering {
+							iconAlpha = uint8(255)
+						}
+						return layout.Inset{Left: unit.Dp(4)}.Layout(gtx, func(gtx C) D {
+							return material.Clickable(gtx, &tab.closeBtn, func(gtx C) D {
+								return misc.Icon{Icon: closeIcon,
+									Color: misc.WithAlpha(color, iconAlpha),
+									Size:  max(16, unit.Dp(16*th.TextSize/14)),
+								}.Layout(gtx, th)
 							})
+						})
 
-						}),
-					)
+					}),
+				)
 
-				})
 			})
 		},
 	)
@@ -270,20 +326,27 @@ func (tab *Tab) Layout(gtx C, th *theme.Theme) D {
 }
 
 func (tab *Tab) layoutBackground(gtx C, th *theme.Theme) D {
-	if !tab.isSelected && !tab.hovering {
-		return layout.Dimensions{Size: gtx.Constraints.Min}
+	var fill color.NRGBA
+	radius := gtx.Dp(unit.Dp(0))
+
+	rect := clip.RRect{
+		Rect: image.Rectangle{Max: image.Point{X: gtx.Constraints.Min.X, Y: gtx.Constraints.Min.Y}},
 	}
 
-	var fill color.NRGBA
-	if tab.isSelected {
-		fill = th.Palette.ContrastBg
-	} else if tab.hovering {
-		fill = misc.WithAlpha(th.Palette.ContrastBg, th.HoverAlpha)
+	if !tab.isSelected && !tab.hovering {
+		rect.SW = radius
+		rect.SE = radius
+	} else {
+		rect.NW = radius
+		rect.NE = radius
+		if tab.isSelected {
+			fill = th.Palette.ContrastBg
+		} else if tab.hovering {
+			fill = misc.WithAlpha(th.Palette.ContrastBg, th.HoverAlpha)
+		}
 	}
-	rect := clip.Rect{
-		Max: image.Point{X: gtx.Constraints.Max.X, Y: gtx.Constraints.Max.Y},
-	}
-	paint.FillShape(gtx.Ops, fill, rect.Op())
+
+	paint.FillShape(gtx.Ops, fill, rect.Op(gtx.Ops))
 	return layout.Dimensions{Size: gtx.Constraints.Min}
 }
 
