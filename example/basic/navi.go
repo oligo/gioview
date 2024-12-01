@@ -160,8 +160,8 @@ func (item simpleNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool) 
 	return nil, false
 }
 
-func (item simpleNavItem) Children() []navi.NavItem {
-	return nil
+func (item simpleNavItem) Children() ([]navi.NavItem, bool) {
+	return nil, false
 }
 
 func (ss simpleItemSection) Title() string {

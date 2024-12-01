@@ -51,7 +51,7 @@ type EntryNavItem struct {
 	menuOptionFunc MenuOptionFunc
 	onSelectFunc   OnSelectFunc
 
-	parent   navi.NavItem
+	parent   *EntryNavItem
 	children []navi.NavItem
 	label    *gv.Editable
 	expaned  bool
@@ -135,6 +135,8 @@ func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor
 			err := eitem.state.UpdateName(text)
 			if err != nil {
 				log.Println("err: ", err)
+			} else {
+				eitem.needSync = true
 			}
 		})
 	}
@@ -177,21 +179,23 @@ func (eitem *EntryNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool)
 	return nil, false
 }
 
-func (eitem *EntryNavItem) Children() []navi.NavItem {
+func (eitem *EntryNavItem) Children() ([]navi.NavItem, bool) {
 	if eitem.state.Kind() == FileNode {
-		return nil
+		return nil, false
 	}
 
 	if !eitem.expaned {
-		return nil
+		return nil, false
 	}
 
+	changed := false
 	if eitem.children == nil || eitem.needSync {
 		eitem.buildChildren(true)
 		eitem.needSync = false
+		changed = true
 	}
 
-	return eitem.children
+	return eitem.children, changed
 }
 
 func (eitem *EntryNavItem) buildChildren(sync bool) {
@@ -280,13 +284,17 @@ func (eitem *EntryNavItem) Remove() error {
 		return err
 	}
 
-	(eitem.parent).(*EntryNavItem).needSync = true
+	eitem.parent.needSync = true
 	return nil
 }
 
 // File or folder name of this node
 func (eitem *EntryNavItem) Name() string {
 	return eitem.state.Name()
+}
+
+func (eitem *EntryNavItem) Parent() *EntryNavItem {
+	return eitem.parent
 }
 
 // File or folder path of this node
@@ -304,7 +312,7 @@ func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavIte
 	// when paste destination is a normal file node, use its parent dir to ease the CUT/COPY operations.
 	dest := eitem
 	if !eitem.IsDir() && eitem.parent != nil {
-		dest = eitem.parent.(*EntryNavItem)
+		dest = eitem.parent
 	}
 
 	pathes := strings.Split(string(data), "\n")
@@ -316,7 +324,7 @@ func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavIte
 			}
 
 			if src != nil && src.parent != nil {
-				parent := src.parent.(*EntryNavItem)
+				parent := src.parent
 				parent.children = slices.DeleteFunc(parent.children, func(chd navi.NavItem) bool {
 					entry := chd.(*EntryNavItem)
 					return entry.Path() == p

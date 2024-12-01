@@ -295,6 +295,10 @@ func (n *EntryNode) UpdateName(newName string) error {
 		n.Path = filepath.Clean(newPath)
 		st, _ := os.Stat(n.Path)
 		n.FileInfo = st
+		
+		if len(n.children) > 0 {
+			n.Refresh(hiddenFileFilter)
+		}
 	}()
 
 	return os.Rename(n.Path, newPath)

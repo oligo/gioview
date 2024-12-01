@@ -40,7 +40,8 @@ type NavItem interface {
 	// The returned boolean value suggest the position of the popup menu should be at
 	// fixed position or not. NavTree should place a clickable icon to guide user interactions.
 	ContextMenuOptions(gtx layout.Context) ([][]menu.MenuOption, bool)
-	Children() []NavItem
+	// Children returns children of the item, and a boolean value indicating wether children have changed.
+	Children() ([]NavItem, bool)
 }
 
 type NavTree struct {
@@ -134,16 +135,16 @@ func (n *NavTree) Layout(gtx C, th *theme.Theme) D {
 
 	n.Update(gtx)
 
-	itemChildren := n.item.Children()
-	if len(n.item.Children()) <= 0 {
-		return n.layoutRoot(gtx, th)
-	}
-
-	if len(n.children) != len(itemChildren) {
+	itemChildren, changed := n.item.Children()
+	if changed || len(n.children) != len(itemChildren) {
 		n.children = n.children[:0]
 		for _, child := range itemChildren {
 			n.children = append(n.children, NewNavItem(child, n.OnClicked))
 		}
+	}
+
+	if len(n.children) <= 0 {
+		return n.layoutRoot(gtx, th)
 	}
 
 	n.childList.Axis = layout.Vertical
