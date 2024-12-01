@@ -8,6 +8,7 @@ import (
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
 
+	"gioui.org/f32"
 	"gioui.org/gesture"
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
@@ -199,7 +200,22 @@ func (tb *Tabbar) layoutTabs(gtx C, th *theme.Theme) D {
 			return tb.list.Layout(gtx, len(tb.tabs), func(gtx C, index int) D {
 				gtx.Constraints.Min.X = tb.tabWidth
 
-				return tb.tabs[index].Layout(gtx, th)
+				dims := tb.tabs[index].Layout(gtx, th)
+
+				// draw a vertical divider bar
+				var path clip.Path
+				path.Begin(gtx.Ops)
+				delta := float32(dims.Size.Y) * 0.2
+				path.MoveTo(f32.Pt(float32(dims.Size.X), delta))
+				path.Line(f32.Pt(0, float32(dims.Size.Y)-2*delta))
+
+				paint.FillShape(gtx.Ops, misc.WithAlpha(th.Fg, 0xb6),
+					clip.Stroke{
+						Path:  path.End(),
+						Width: 1,
+					}.Op(),
+				)
+				return dims
 			})
 		}),
 	)
