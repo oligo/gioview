@@ -24,6 +24,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
 	"github.com/oligo/gioview/menu"
 	"github.com/oligo/gioview/misc"
 	"github.com/oligo/gioview/navi"
@@ -37,6 +38,10 @@ type (
 	D = layout.Dimensions
 )
 
+const (
+	EntryMIME = "gioview/file-entry"
+)
+
 var (
 	folderIcon, _     = widget.NewIcon(icons.FileFolder)
 	folderOpenIcon, _ = widget.NewIcon(icons.FileFolderOpen)
@@ -48,6 +53,7 @@ var _ navi.NavItem = (*EntryNavItem)(nil)
 type EntryNavItem struct {
 	state          *EntryNode
 	click          gesture.Click
+	draggable      widget.Draggable
 	menuOptionFunc MenuOptionFunc
 	onSelectFunc   OnSelectFunc
 
@@ -124,6 +130,7 @@ func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor
 		defer paint.PushOpacity(gtx.Ops, 0.6).Pop()
 	}
 	event.Op(gtx.Ops, eitem)
+	eitem.click.Add(gtx.Ops)
 	call.Add(gtx.Ops)
 
 	return dims
@@ -144,22 +151,64 @@ func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor
 	eitem.label.Color = textColor
 	eitem.label.TextSize = th.TextSize
 
-	return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-		layout.Rigid(func(gtx C) D {
-			if eitem.icon() == nil {
-				return layout.Dimensions{}
-			}
-			return layout.Inset{Right: unit.Dp(6)}.Layout(gtx, func(gtx C) D {
-				iconColor := th.ContrastBg
-				return misc.Icon{Icon: eitem.icon(), Color: iconColor, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
-			})
-		}),
-		layout.Flexed(1, func(gtx C) D {
-			gtx.Constraints.Min.X = gtx.Constraints.Max.X
-			return eitem.label.Layout(gtx, th)
-		}),
+	return eitem.draggable.Layout(gtx,
+		func(gtx C) D {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Rigid(func(gtx C) D {
+					if eitem.icon() == nil {
+						return layout.Dimensions{}
+					}
+					return layout.Inset{Right: unit.Dp(6)}.Layout(gtx, func(gtx C) D {
+						iconColor := th.ContrastBg
+						return misc.Icon{Icon: eitem.icon(), Color: iconColor, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
+					})
+				}),
+				layout.Flexed(1, func(gtx C) D {
+					gtx.Constraints.Min.X = gtx.Constraints.Max.X
+					return eitem.label.Layout(gtx, th)
+				}),
+			)
+		},
+		func(gtx C) D {
+			return eitem.layoutDraggingBox(gtx, th)
+		},
 	)
 
+}
+
+func (eitem *EntryNavItem) layoutDraggingBox(gtx C, th *theme.Theme) D {
+	if !eitem.draggable.Dragging() {
+		return D{}
+	}
+
+	offset := eitem.draggable.Pos()
+	if offset.Round().X == 0 && offset.Round().Y == 0 {
+		return D{}
+	}
+
+	macro := op.Record(gtx.Ops)
+	dims := func(gtx C) D {
+		return widget.Border{
+			Color:        th.ContrastBg,
+			Width:        unit.Dp(1),
+			CornerRadius: unit.Dp(8),
+		}.Layout(gtx, func(gtx C) D {
+			return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4), Left: unit.Dp(8), Right: unit.Dp(8)}.Layout(gtx, func(gtx C) D {
+				lb := material.Label(th.Theme, th.TextSize, eitem.Name())
+				lb.Color = th.ContrastFg
+				return lb.Layout(gtx)
+			})
+		})
+	}(gtx)
+	call := macro.Stop()
+
+	defer clip.UniformRRect(image.Rectangle{Max: dims.Size}, gtx.Dp(unit.Dp(8))).Push(gtx.Ops).Pop()
+	paint.ColorOp{Color: misc.WithAlpha(th.ContrastBg, 0xb6)}.Add(gtx.Ops)
+	paint.PaintOp{}.Add(gtx.Ops)
+	defer paint.PushOpacity(gtx.Ops, 0.8).Pop()
+	call.Add(gtx.Ops)
+
+	return dims
 }
 
 func (eitem *EntryNavItem) IsDir() bool {
@@ -351,10 +400,13 @@ func (eitem *EntryNavItem) OnCopyOrCut(gtx C, isCut bool) {
 }
 
 func (eitem *EntryNavItem) Update(gtx C) error {
+	if eitem.draggable.Type == "" {
+		eitem.draggable.Type = EntryMIME
+	}
+
 	for {
 		ke, ok := gtx.Event(
 			// focus conflicts with editable. so subscribe editable's key events here.
-			pointer.Filter{Target: eitem, Kinds: pointer.Press | pointer.Release},
 			key.Filter{Focus: eitem.label, Name: "C", Required: key.ModShortcut},
 			key.Filter{Focus: eitem.label, Name: "V", Required: key.ModShortcut},
 			key.Filter{Focus: eitem.label, Name: "X", Required: key.ModShortcut},
@@ -407,12 +459,25 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 					}
 				}
 			}
-		case pointer.Event:
-			if event.Buttons.Contain(pointer.ButtonPrimary) && event.Kind == pointer.Press {
-				eitem.OnSelect()
-			}
 
 		}
+	}
+
+	// Process click of the eitem.
+	// Use guest.Click to detect press&release of pointer. This prevents conflicts with dragging events.
+	for {
+		e, ok := eitem.click.Update(gtx.Source)
+		if !ok {
+			break
+		}
+		if e.Kind == gesture.KindClick {
+			eitem.OnSelect()
+		}
+	}
+
+	//Process transfer.RequestEvent for draggable.
+	if m, ok := eitem.draggable.Update(gtx); ok {
+		eitem.draggable.Offer(gtx, m, io.NopCloser(strings.NewReader(eitem.state.Path)))
 	}
 
 	return nil

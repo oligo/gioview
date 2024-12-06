@@ -3,13 +3,20 @@ package main
 import (
 	//"image"
 
+	"image"
+	"io"
 	"os"
 	"strings"
 
+	"github.com/oligo/gioview/explorer"
 	"github.com/oligo/gioview/theme"
 	"github.com/oligo/gioview/view"
 
+	"gioui.org/io/event"
+	"gioui.org/io/transfer"
 	"gioui.org/layout"
+	"gioui.org/op/clip"
+	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	// "gioui.org/text"
@@ -26,10 +33,11 @@ type FileExplorerView struct {
 	saveFileBtn   widget.Clickable
 	openFolderBtn widget.Clickable
 
-	msg1 string
-	msg2 string
-	msg3 string
-	msg4 string
+	msg1       string
+	msg2       string
+	msg3       string
+	msg4       string
+	dropedFile string
 }
 
 func (vw *FileExplorerView) ID() view.ViewID {
@@ -112,11 +120,54 @@ func (vw *FileExplorerView) Layout(gtx layout.Context, th *theme.Theme) layout.D
 			return material.Label(th.Theme, th.TextSize, "File saved: "+vw.msg4).Layout(gtx)
 
 		}),
+
+		layout.Rigid(func(gtx C) D {
+			return layout.Center.Layout(gtx, func(gtx C) D {
+				return vw.layoutDropArea(gtx, th)
+			})
+		}),
 	)
 }
 
-func (va *FileExplorerView) OnFinish() {
-	va.BaseView.OnFinish()
+func (vw *FileExplorerView) layoutDropArea(gtx C, th *theme.Theme) D {
+	// Check for the received data.
+	for {
+		ev, ok := gtx.Event(transfer.TargetFilter{Target: vw, Type: explorer.EntryMIME})
+		if !ok {
+			break
+		}
+		switch e := ev.(type) {
+		case transfer.DataEvent:
+			data := e.Open()
+			defer data.Close()
+			content, _ := io.ReadAll(data)
+			vw.dropedFile = string(content)
+		}
+	}
+
+	gtx.Constraints = layout.Exact(image.Point{X: 500, Y: 300})
+
+	defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
+	event.Op(gtx.Ops, vw)
+
+	widget.Border{
+		Color: th.Fg,
+		Width: unit.Dp(2),
+	}.Layout(gtx, func(gtx C) D {
+		return layout.UniformInset(unit.Dp(24)).Layout(gtx, func(gtx C) D {
+			msg := "Drag file from the file tree to here"
+			if vw.dropedFile != "" {
+				msg = "File Received: " + vw.dropedFile
+			}
+			return material.Label(th.Theme, th.TextSize, msg).Layout(gtx)
+		})
+	})
+
+	return layout.Dimensions{Size: gtx.Constraints.Max}
+}
+
+func (vw *FileExplorerView) OnFinish() {
+	vw.BaseView.OnFinish()
 	// Put your cleanup code here.
 }
 
