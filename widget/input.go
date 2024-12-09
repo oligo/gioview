@@ -373,8 +373,16 @@ func (in *TextField) layout2(gtx layout.Context, th *theme.Theme, hint string) l
 
 }
 
+func (in *TextField) State() *widget.Editor {
+	return &in.editor
+}
+
 func (in *TextField) Focused(gtx layout.Context) bool {
 	return gtx.Focused(in.editor)
+}
+
+func (in *TextField) SetFocus(gtx layout.Context) {
+	gtx.Execute(key.FocusCmd{Tag: &in.editor})
 }
 
 // Clear clears the input text.
