@@ -71,6 +71,10 @@ type Editor struct {
 
 	buffer     *editBuffer
 	textStyles []*TextStyle
+	// Match ranges in rune offset, for text search.
+	matches []MatchRange
+	// Index of the current [MatchRange].
+	currentMatch int
 	// scratch is a byte buffer that is reused to efficiently read portions of text
 	// from the textView.
 	scratch    []byte
@@ -124,6 +128,14 @@ type LineInfo struct {
 	// offset of the start rune the line.
 	Start int
 	// offset of the end rune the line.
+	End int
+}
+
+// Matched substring range.
+type MatchRange struct {
+	// offset of the start rune the match.
+	Start int
+	// offset of the end rune the match.
 	End int
 }
 
@@ -625,7 +637,7 @@ func (e *Editor) Update(gtx layout.Context) (EditorEvent, bool) {
 // Layout lays out the editor using the provided textMaterial as the paint material
 // for the text glyphs+caret and the selectMaterial as the paint material for the
 // selection rectangle.
-func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper, font font.Font, size unit.Sp, textMaterial, selectMaterial op.CallOp, lineMaterial op.CallOp) layout.Dimensions {
+func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper, font font.Font, size unit.Sp, textMaterial, selectMaterial op.CallOp, lineMaterial op.CallOp, matchMaterial op.CallOp) layout.Dimensions {
 	for {
 		_, ok := e.Update(gtx)
 		if !ok {
@@ -634,7 +646,7 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper, font font.Font, siz
 	}
 
 	e.text.Layout(gtx, lt, font, size)
-	return e.layout(gtx, textMaterial, selectMaterial, lineMaterial)
+	return e.layout(gtx, textMaterial, selectMaterial, lineMaterial, matchMaterial)
 }
 
 // updateSnippet queues a key.SnippetCmd if the snippet content or position
@@ -680,7 +692,7 @@ func (e *Editor) updateSnippet(gtx layout.Context, start, end int) {
 	gtx.Execute(key.SnippetCmd{Tag: e, Snippet: newSnip})
 }
 
-func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.CallOp, lineMaterial op.CallOp) layout.Dimensions {
+func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.CallOp, lineMaterial op.CallOp, matchMaterial op.CallOp) layout.Dimensions {
 	// Adjust scrolling for new viewport and layout.
 	e.text.ScrollRel(0, 0)
 
@@ -714,8 +726,9 @@ func (e *Editor) layout(gtx layout.Context, textMaterial, selectMaterial op.Call
 	semantic.Editor.Add(gtx.Ops)
 	if e.Len() > 0 {
 		e.paintSelection(gtx, selectMaterial)
-		e.paintText(gtx, textMaterial)
+		e.paintMatches(gtx, matchMaterial)
 		e.paintLineHighlight(gtx, lineMaterial)
+		e.paintText(gtx, textMaterial)
 	}
 	if gtx.Enabled() {
 		e.paintCaret(gtx, textMaterial)
@@ -754,6 +767,32 @@ func (e *Editor) paintCaret(gtx layout.Context, material op.CallOp) {
 func (e *Editor) paintLineHighlight(gtx layout.Context, material op.CallOp) {
 	e.initBuffer()
 	e.text.paintLineHighlight(gtx, material)
+}
+
+// SetMatches sets the matched text ranges after a find operation.
+func (e *Editor) SetMatches(matches []MatchRange) {
+	e.matches = matches
+	e.ClearSelection()
+	if len(matches) > 0 {
+		e.currentMatch = 0
+	}
+}
+
+func (e *Editor) paintMatches(gtx layout.Context, material op.CallOp) {
+	e.initBuffer()
+	e.text.paintMatches(gtx, e.matches, material)
+
+}
+
+// NextMatch is used to switch between the [MatchRange]s. This also selects the next match and causes
+// the selection background drawn under the matched text.
+func (e *Editor) NextMatch(index int) {
+	if index < 0 || index >= len(e.matches) {
+		return
+	}
+
+	e.currentMatch = index
+	e.SetCaret(e.matches[e.currentMatch].Start, e.matches[e.currentMatch].End)
 }
 
 // Len is the length of the editor contents, in runes.

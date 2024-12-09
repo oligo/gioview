@@ -38,6 +38,8 @@ type EditorStyle struct {
 	//LineHighlightColor is the color used to highlight the clicked logical line.
 	// If not set, line will not be highlighted.
 	LineHighlightColor color.NRGBA
+	// TextMatchColor use the color used to highlight the matched substring.
+	TextMatchColor color.NRGBA
 
 	Editor      *Editor
 	ShowLineNum bool
@@ -64,6 +66,7 @@ type EditorConf struct {
 	Bg                 color.NRGBA
 	SelectionColor     color.NRGBA
 	LineHighlightColor color.NRGBA
+	TextMatchColor     color.NRGBA
 	// typeface for editing
 	TypeFace        font.Typeface
 	TextSize        unit.Sp
@@ -96,6 +99,7 @@ func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
 		HintColor:          MulAlpha(conf.TextColor, 0xbb),
 		SelectionColor:     MulAlpha(conf.SelectionColor, 0x60),
 		LineHighlightColor: MulAlpha(conf.LineHighlightColor, 0x25),
+		TextMatchColor:     conf.TextMatchColor,
 		ShowLineNum:        conf.ShowLineNum,
 		lineBar: &lineNumberBar{
 			shaper:          conf.Shaper,
@@ -124,6 +128,10 @@ func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {
 	paint.ColorOp{Color: e.LineHighlightColor}.Add(gtx.Ops)
 	lineColor := lineColorMacro.Stop()
 
+	matchColorMacro := op.Record(gtx.Ops)
+	paint.ColorOp{Color: e.TextMatchColor}.Add(gtx.Ops)
+	matchColor := matchColorMacro.Stop()
+
 	macro := op.Record(gtx.Ops)
 	tl := widget.Label{
 		Alignment:       e.Editor.Alignment,
@@ -144,7 +152,7 @@ func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {
 	e.Editor.LineHeightScale = e.LineHeightScale
 
 	if !e.ShowLineNum {
-		d := e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor, lineColor)
+		d := e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor, lineColor, matchColor)
 		if e.Editor.Len() == 0 {
 			call.Add(gtx.Ops)
 		}
@@ -163,7 +171,7 @@ func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {
 		layout.Rigid(layout.Spacer{Width: e.lineBar.padding}.Layout),
 
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			d := e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor, lineColor)
+			d := e.Editor.Layout(gtx, e.shaper, e.Font, e.TextSize, textColor, selectionColor, lineColor, matchColor)
 			if e.Editor.Len() == 0 {
 				call.Add(gtx.Ops)
 			}
