@@ -428,7 +428,7 @@ func (e *Editor) processKey(gtx layout.Context) (EditorEvent, bool) {
 			case e.SingleLine:
 				s = strings.ReplaceAll(s, "\n", " ")
 			}
-			moves += e.replace(ke.Range.Start, ke.Range.End, s, true)
+			moves += e.replace(ke.Range.Start, ke.Range.End, s, true, 0)
 			adjust += utf8.RuneCountInString(ke.Text) - moves
 			// Reset caret xoff.
 			e.text.MoveCaret(0, 0)
@@ -814,7 +814,7 @@ func (e *Editor) SetText(s string, addHistory bool) {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
 	// disable history when loading doc. In other case history might be required
-	e.replace(0, e.text.Len(), s, addHistory)
+	e.replace(0, e.text.Len(), s, addHistory, 0)
 	// Reset xoff and move the caret to the beginning.
 	e.SetCaret(0, 0)
 }
@@ -852,7 +852,7 @@ func (e *Editor) Delete(graphemeClusters int) (deletedRunes int) {
 	e.text.MoveCaret(0, graphemeClusters)
 	// Get the new rune offsets of the selection.
 	start, end = e.text.Selection()
-	e.replace(start, end, "", true)
+	e.replace(start, end, "", true, 0)
 	// Reset xoff.
 	e.text.MoveCaret(0, 0)
 	e.ClearSelection()
@@ -865,7 +865,7 @@ func (e *Editor) Insert(s string) (insertedRunes int) {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
 	start, end := e.text.Selection()
-	moves := e.replace(start, end, s, true)
+	moves := e.replace(start, end, s, true, 0)
 	if end < start {
 		start = end
 	}
@@ -879,7 +879,11 @@ func (e *Editor) Insert(s string) (insertedRunes int) {
 // modification represents a change to the contents of the editor buffer.
 // It contains the necessary information to both apply the change and
 // reverse it, and is useful for implementing undo/redo.
+// BatchIdx is added to support undo/redo of a replaceAll operation.
 type modification struct {
+	// BatchIdx is the index of a group of modifications cased by a atomic operation.
+	// undo/redo should check BatchIdx to find all modifications until it reaches 0.
+	BatchIdx int
 	// StartRune is the inclusive index of the first rune
 	// modified.
 	StartRune int
@@ -898,12 +902,30 @@ func (e *Editor) undo() (EditorEvent, bool) {
 	if len(e.history) < 1 || e.nextHistoryIdx == 0 {
 		return nil, false
 	}
+
+	undoOnce := func(mod modification) {
+		replaceEnd := mod.StartRune + utf8.RuneCountInString(mod.ApplyContent)
+		// batchIdx is omitted when addHistory is false.
+		e.replace(mod.StartRune, replaceEnd, mod.ReverseContent, false, 0)
+		caretEnd := mod.StartRune + utf8.RuneCountInString(mod.ReverseContent)
+		e.SetCaret(caretEnd, mod.StartRune)
+		e.nextHistoryIdx--
+	}
+
 	mod := e.history[e.nextHistoryIdx-1]
-	replaceEnd := mod.StartRune + utf8.RuneCountInString(mod.ApplyContent)
-	e.replace(mod.StartRune, replaceEnd, mod.ReverseContent, false)
-	caretEnd := mod.StartRune + utf8.RuneCountInString(mod.ReverseContent)
-	e.SetCaret(caretEnd, mod.StartRune)
-	e.nextHistoryIdx--
+	undoOnce(mod)
+
+	// ReplaceAll is in reverse order, so the first batchIdx will always be zero.
+	// Try next modification to check if they belong to a replaceAll group.
+	for e.nextHistoryIdx >= 1 {
+		mod = e.history[e.nextHistoryIdx-1]
+		if mod.BatchIdx == 0 {
+			break
+		}
+
+		undoOnce(mod)
+	}
+
 	return ChangeEvent{}, true
 }
 
@@ -914,12 +936,33 @@ func (e *Editor) redo() (EditorEvent, bool) {
 	if len(e.history) < 1 || e.nextHistoryIdx == len(e.history) {
 		return nil, false
 	}
+
+	redoOnce := func(mod modification) {
+		end := mod.StartRune + utf8.RuneCountInString(mod.ReverseContent)
+		e.replace(mod.StartRune, end, mod.ApplyContent, false, 0)
+		caretEnd := mod.StartRune + utf8.RuneCountInString(mod.ApplyContent)
+		e.SetCaret(caretEnd, mod.StartRune)
+		e.nextHistoryIdx++
+	}
+
 	mod := e.history[e.nextHistoryIdx]
-	end := mod.StartRune + utf8.RuneCountInString(mod.ReverseContent)
-	e.replace(mod.StartRune, end, mod.ApplyContent, false)
-	caretEnd := mod.StartRune + utf8.RuneCountInString(mod.ApplyContent)
-	e.SetCaret(caretEnd, mod.StartRune)
-	e.nextHistoryIdx++
+	redoOnce(mod)
+
+	// ReplaceAll is in reverse order, so the first batchIdx will always >= zero.
+	// Try next modification to check if they belong to a replaceAll group.
+	if mod.BatchIdx != 0 {
+		for e.nextHistoryIdx < len(e.history) {
+			mod = e.history[e.nextHistoryIdx]
+			if mod.BatchIdx >= 0 {
+				redoOnce(mod)
+			}
+
+			if mod.BatchIdx == 0 {
+				break
+			}
+		}
+	}
+
 	return ChangeEvent{}, true
 }
 
@@ -928,7 +971,7 @@ func (e *Editor) redo() (EditorEvent, bool) {
 // addHistory controls whether this modification is recorded in the undo
 // history. replace can modify text in positions unrelated to the cursor
 // position.
-func (e *Editor) replace(start, end int, s string, addHistory bool) int {
+func (e *Editor) replace(start, end int, s string, addHistory bool, batchIdx int) int {
 	length := e.text.Len()
 	if start > end {
 		start, end = end, start
@@ -965,6 +1008,7 @@ func (e *Editor) replace(start, end int, s string, addHistory bool) int {
 			e.history = e.history[:e.nextHistoryIdx]
 		}
 		e.history = append(e.history, modification{
+			BatchIdx:       batchIdx,
 			StartRune:      start,
 			ApplyContent:   s,
 			ReverseContent: string(deleted),
@@ -987,6 +1031,29 @@ func (e *Editor) replace(start, end int, s string, addHistory bool) int {
 	e.ime.start = adjust(e.ime.start)
 	e.ime.end = adjust(e.ime.end)
 	return sc
+}
+
+// ReplaceAll assumes a context of "Find & Replace". newStr applies
+// to a list of text [MatchRange], and the matched text is replaced
+// with newStr one by one. The number of replacement is saved to be
+// used during undo/redo.
+// It returns the number of occurrences replaced.
+func (e *Editor) ReplaceAll(newStr string) int {
+	if len(e.matches) <= 0 {
+		return 0
+	}
+
+	// Traverse in reverse order to prevent match offset changes after
+	// each replace.
+	finalPos := 0
+	for idx := len(e.matches) - 1; idx >= 0; idx-- {
+		start, end := e.matches[idx].Start, e.matches[idx].End
+		e.replace(start, end, newStr, true, idx)
+		finalPos = start
+	}
+
+	e.SetCaret(finalPos, finalPos)
+	return len(e.matches)
 }
 
 // MoveCaret moves the caret (aka selection start) and the selection end
