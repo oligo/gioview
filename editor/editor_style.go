@@ -66,6 +66,7 @@ type EditorConf struct {
 	Bg                 color.NRGBA
 	SelectionColor     color.NRGBA
 	LineHighlightColor color.NRGBA
+	LineNumberColor    color.NRGBA
 	TextMatchColor     color.NRGBA
 	// typeface for editing
 	TypeFace        font.Typeface
@@ -81,11 +82,8 @@ type EditorConf struct {
 }
 
 func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
-	if conf.LineNumPadding <= 0 {
-		conf.LineNumPadding = unit.Dp(32)
-	}
 
-	return EditorStyle{
+	es := EditorStyle{
 		Editor: editor,
 		Font: font.Font{
 			Typeface: conf.TypeFace,
@@ -105,12 +103,22 @@ func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
 			shaper:          conf.Shaper,
 			lineHeight:      conf.LineHeight,
 			lineHeightScale: conf.LineHeightScale,
-			color:           misc.WithAlpha(conf.TextColor, 0xb6),
+			color:           conf.LineNumberColor,
 			typeFace:        conf.TypeFace,
 			textSize:        conf.TextSize,
 			padding:         conf.LineNumPadding,
 		},
 	}
+
+	if conf.LineNumPadding <= 0 {
+		es.lineBar.padding = unit.Dp(32)
+	}
+
+	if conf.LineHighlightColor == (color.NRGBA{}) {
+		es.lineBar.color = misc.WithAlpha(conf.TextColor, 0xb6)
+	}
+
+	return es
 }
 
 func (e EditorStyle) Layout(gtx layout.Context) layout.Dimensions {

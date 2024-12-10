@@ -313,7 +313,9 @@ func (in *TextField) layout2(gtx layout.Context, th *theme.Theme, hint string) l
 							return layout.Dimensions{}
 						}),
 						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							return material.Editor(th.Theme, &in.editor, hint).Layout(gtx)
+							ed := material.Editor(th.Theme, &in.editor, hint)
+							ed.HintColor = misc.WithAlpha(th.Fg, 0xb6)
+							return ed.Layout(gtx)
 						}),
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							if in.MaxChars <= 0 {
@@ -329,7 +331,7 @@ func (in *TextField) layout2(gtx layout.Context, th *theme.Theme, hint string) l
 										th.TextSize*0.9,
 										strconv.Itoa(in.editor.Len())+"/"+strconv.Itoa(int(in.MaxChars)),
 									)
-									count.Color = misc.WithAlpha(th.Fg, 128)
+									count.Color = misc.WithAlpha(th.Fg, 0xb6)
 									return count.Layout(gtx)
 								},
 							)
