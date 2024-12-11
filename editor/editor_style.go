@@ -114,7 +114,7 @@ func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
 		es.lineBar.padding = unit.Dp(32)
 	}
 
-	if conf.LineHighlightColor == (color.NRGBA{}) {
+	if conf.LineNumberColor == (color.NRGBA{}) {
 		es.lineBar.color = misc.WithAlpha(conf.TextColor, 0xb6)
 	}
 
