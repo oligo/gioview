@@ -50,6 +50,16 @@ var (
 
 var _ navi.NavItem = (*EntryNavItem)(nil)
 
+// EntryNavItem is a navigable file node. When used with [navi.NavTree],
+// it renders a file tree, and an optional context menu.
+// Supported features:
+//  1. in-place edit/rename, press ESC to escape editing.
+//  2. context menu.
+//  3. Shortcuts: ctlr/cmd+c, ctrl/cmd+v, ctrl/cmd+p.
+//  4. copy from external file/folder.
+//  5. Delete files/folders by moving them to trash bin.
+//  5. Drag & Drop support.
+//  6. Restore states from states data.
 type EntryNavItem struct {
 	state          *EntryNode
 	click          gesture.Click
@@ -60,9 +70,15 @@ type EntryNavItem struct {
 	parent   *EntryNavItem
 	children []navi.NavItem
 	label    *gv.Editable
-	expaned  bool
+	expanded bool
 	needSync bool
 	isCut    bool
+}
+
+type TreeState struct {
+	Path     string
+	Expanded bool
+	Children []*TreeState
 }
 
 type MenuOptionFunc func(gtx C, item *EntryNavItem) [][]menu.MenuOption
@@ -82,14 +98,14 @@ func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc
 		state:          tree,
 		menuOptionFunc: menuOptionFunc,
 		onSelectFunc:   onSelectFunc,
-		expaned:        true,
+		expanded:       true,
 	}, nil
 
 }
 
 func (eitem *EntryNavItem) icon() *widget.Icon {
 	if eitem.state.Kind() == FolderNode {
-		if eitem.expaned {
+		if eitem.expanded {
 			return folderOpenIcon
 		}
 		return folderIcon
@@ -99,8 +115,8 @@ func (eitem *EntryNavItem) icon() *widget.Icon {
 }
 
 func (eitem *EntryNavItem) OnSelect() {
-	eitem.expaned = !eitem.expaned
-	if eitem.expaned {
+	eitem.expanded = !eitem.expanded
+	if eitem.expanded {
 		eitem.needSync = true
 
 		for _, child := range eitem.children {
@@ -233,7 +249,7 @@ func (eitem *EntryNavItem) Children() ([]navi.NavItem, bool) {
 		return nil, false
 	}
 
-	if !eitem.expaned {
+	if !eitem.expanded {
 		return nil, false
 	}
 
@@ -261,14 +277,14 @@ func (eitem *EntryNavItem) buildChildren(sync bool) {
 			state:          c,
 			menuOptionFunc: eitem.menuOptionFunc,
 			onSelectFunc:   eitem.onSelectFunc,
-			expaned:        false,
+			expanded:       false,
 			needSync:       false,
 		})
 	}
 }
 
 func (eitem *EntryNavItem) Refresh() {
-	eitem.expaned = true
+	eitem.expanded = true
 	eitem.needSync = true
 }
 
@@ -302,7 +318,7 @@ func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind, postAction func(nod
 		state:          childNode,
 		menuOptionFunc: eitem.menuOptionFunc,
 		onSelectFunc:   eitem.onSelectFunc,
-		expaned:        false,
+		expanded:       false,
 		needSync:       false,
 	}
 
@@ -356,6 +372,65 @@ func (eitem *EntryNavItem) Kind() NodeKind {
 	return eitem.state.Kind()
 }
 
+func (eitem *EntryNavItem) Expanded() bool {
+	return eitem.expanded
+}
+
+func (eitem *EntryNavItem) SetExpanded(expanded bool) {
+	eitem.expanded = expanded
+}
+
+// Restore restores the tree states by applying state to the current node and its children.
+func (eitem *EntryNavItem) Restore(state *TreeState) {
+	if state.Path != eitem.state.Path {
+		return
+	}
+
+	eitem.expanded = state.Expanded
+	if len(state.Children) <= 0 {
+		return
+	}
+
+	stateMap := make(map[string]*TreeState, len(state.Children))
+	for _, st := range state.Children {
+		stateMap[st.Path] = st
+	}
+
+	eitem.buildChildren(true)
+	for _, child := range eitem.children {
+		child := child.(*EntryNavItem)
+		if !child.state.IsDir() {
+			continue
+		}
+
+		if st, exists := stateMap[child.Path()]; exists {
+			child.Restore(st)
+		}
+	}
+}
+
+// Snapshot saves states of the expanded [EntryNavItem] node, and the states of its children.
+func (eitem *EntryNavItem) Snapshot() *TreeState {
+	if !eitem.state.IsDir() || !eitem.expanded {
+		return nil
+	}
+
+	state := &TreeState{Path: eitem.Path(), Expanded: eitem.expanded}
+
+	for _, child := range eitem.children {
+		child := child.(*EntryNavItem)
+		if !child.state.IsDir() {
+			continue
+		}
+
+		if childState := child.Snapshot(); childState != nil {
+			state.Children = append(state.Children, childState)
+		}
+	}
+
+	return state
+}
+
 // read data from clipboard.
 func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavItem) error {
 	// when paste destination is a normal file node, use its parent dir to ease the CUT/COPY operations.
@@ -390,7 +465,7 @@ func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavIte
 	}
 
 	dest.needSync = true
-	dest.expaned = true
+	dest.expanded = true
 	return nil
 }
 
