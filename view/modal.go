@@ -10,6 +10,7 @@ import (
 	"github.com/oligo/gioview/theme"
 
 	"gioui.org/io/event"
+	"gioui.org/io/key"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -79,6 +80,23 @@ func (m *ModalView) update(gtx layout.Context) bool {
 
 	if m.View.Finished() {
 		m.closed = true
+	}
+
+	for {
+		// Use a global event filter to catch quit events.
+		// Applications have to be very careful as they may also use global escape
+		// elsewhere, which causes conflicts.
+		event, ok := gtx.Event(key.Filter{Name: key.NameEscape})
+		if !ok {
+			break
+		}
+		ev, ok := event.(key.Event)
+		if !ok {
+			continue
+		}
+		if ev.Name == key.NameEscape {
+			m.closed = true
+		}
 	}
 
 	return m.closed
