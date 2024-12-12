@@ -128,7 +128,7 @@ func newHome(window *app.Window) *HomeView {
 		_ = vm.RequestSwitch(intent)
 	}))
 
-	fileTree, _ := explorer.NewEntryNavItem("../../", nil, nil)
+	fileTree, _ := explorer.NewEntryNavItem("../../")
 	sidebar.AddSection(NewFileTreeNav("File Explorer", fileTree, func(item *navi.NavTree) {
 		sidebar.OnItemSelected(item)
 		//intent := view.Intent{Target: EditorExampleViewID, ShowAsModal: false}

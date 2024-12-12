@@ -39,7 +39,10 @@ type (
 )
 
 const (
+	// For DnD use.
 	EntryMIME = "gioview/file-entry"
+	// For read from clipboard use.
+	mimeText = "application/text"
 )
 
 var (
@@ -58,21 +61,30 @@ var _ navi.NavItem = (*EntryNavItem)(nil)
 //  3. Shortcuts: ctlr/cmd+c, ctrl/cmd+v, ctrl/cmd+p.
 //  4. copy from external file/folder.
 //  5. Delete files/folders by moving them to trash bin.
-//  5. Drag & Drop support.
+//  5. Drag & Drop support. External components can also subscribe the transfer events by
+//     using transfer.TargetFilter with the EntryMIME type.
 //  6. Restore states from states data.
 type EntryNavItem struct {
-	state          *EntryNode
-	click          gesture.Click
-	draggable      widget.Draggable
-	menuOptionFunc MenuOptionFunc
-	onSelectFunc   OnSelectFunc
-
+	state    *EntryNode
 	parent   *EntryNavItem
 	children []navi.NavItem
 	label    *gv.Editable
 	expanded bool
 	needSync bool
-	isCut    bool
+	// A cut/paste mark.
+	isCut     bool
+	click     gesture.Click
+	draggable widget.Draggable
+	// entered and dnsInited are for Drag and Drop op.
+	entered   bool
+	dndInited bool
+	reader    *strings.Reader
+	// Used to set context menu options.
+	MenuOptionFunc MenuOptionFunc
+	// Used to set what to be done when a item is clicked.
+	OnSelectFunc OnSelectFunc
+	// Used to decide whether the DnD drop can continue.
+	OnDropConfirmFunc OnDropConfirmFunc
 }
 
 type TreeState struct {
@@ -83,22 +95,19 @@ type TreeState struct {
 
 type MenuOptionFunc func(gtx C, item *EntryNavItem) [][]menu.MenuOption
 type OnSelectFunc func(item *EntryNode)
+type OnDropConfirmFunc func(srcPath string, dest *EntryNode, onConfirmed func())
 
 // Construct a file tree object that loads files and folders from rootDir.
-// `menuOptionFunc` is used to define the operations allowed by context menu(use right click to active it).
-// `onSelectFunc` defines what action to take when a navigable item is clicked (files or folders).
-func NewEntryNavItem(rootDir string, menuOptionFunc MenuOptionFunc, onSelectFunc OnSelectFunc) (*EntryNavItem, error) {
+func NewEntryNavItem(rootDir string) (*EntryNavItem, error) {
 	tree, err := NewFileTree(rootDir)
 	if err != nil {
 		return nil, err
 	}
 
 	return &EntryNavItem{
-		parent:         nil,
-		state:          tree,
-		menuOptionFunc: menuOptionFunc,
-		onSelectFunc:   onSelectFunc,
-		expanded:       true,
+		parent:   nil,
+		state:    tree,
+		expanded: true,
 	}, nil
 
 }
@@ -118,18 +127,10 @@ func (eitem *EntryNavItem) OnSelect() {
 	eitem.expanded = !eitem.expanded
 	if eitem.expanded {
 		eitem.needSync = true
-
-		for _, child := range eitem.children {
-			child := child.(*EntryNavItem)
-			if child.isCut {
-				child.isCut = false
-			}
-		}
-
 	}
 
-	if eitem.state.Kind() == FileNode && eitem.onSelectFunc != nil {
-		eitem.onSelectFunc(eitem.state)
+	if eitem.state.Kind() == FileNode && eitem.OnSelectFunc != nil {
+		eitem.OnSelectFunc(eitem.state)
 	}
 }
 
@@ -144,6 +145,11 @@ func (eitem *EntryNavItem) Layout(gtx layout.Context, th *theme.Theme, textColor
 	defer clip.Rect(image.Rectangle{Max: dims.Size}).Push(gtx.Ops).Pop()
 	if eitem.isCut {
 		defer paint.PushOpacity(gtx.Ops, 0.6).Pop()
+	}
+	// draw a highlighted background for the potential drop target.
+	if eitem.droppable() {
+		paint.ColorOp{Color: misc.WithAlpha(th.ContrastBg, 0xb6)}.Add(gtx.Ops)
+		paint.PaintOp{}.Add(gtx.Ops)
 	}
 	event.Op(gtx.Ops, eitem)
 	eitem.click.Add(gtx.Ops)
@@ -192,6 +198,10 @@ func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor
 
 }
 
+func (eitem *EntryNavItem) droppable() bool {
+	return eitem.entered && eitem.dndInited && !eitem.draggable.Dragging()
+}
+
 func (eitem *EntryNavItem) layoutDraggingBox(gtx C, th *theme.Theme) D {
 	if !eitem.draggable.Dragging() {
 		return D{}
@@ -232,13 +242,13 @@ func (eitem *EntryNavItem) IsDir() bool {
 }
 
 func (eitem *EntryNavItem) SetMenuOptions(menuOptionFunc MenuOptionFunc) {
-	eitem.menuOptionFunc = menuOptionFunc
+	eitem.MenuOptionFunc = menuOptionFunc
 }
 
 func (eitem *EntryNavItem) ContextMenuOptions(gtx C) ([][]menu.MenuOption, bool) {
 
-	if eitem.menuOptionFunc != nil {
-		return eitem.menuOptionFunc(gtx, eitem), false
+	if eitem.MenuOptionFunc != nil {
+		return eitem.MenuOptionFunc(gtx, eitem), false
 	}
 
 	return nil, false
@@ -273,12 +283,13 @@ func (eitem *EntryNavItem) buildChildren(sync bool) {
 	}
 	for _, c := range eitem.state.Children() {
 		eitem.children = append(eitem.children, &EntryNavItem{
-			parent:         eitem,
-			state:          c,
-			menuOptionFunc: eitem.menuOptionFunc,
-			onSelectFunc:   eitem.onSelectFunc,
-			expanded:       false,
-			needSync:       false,
+			parent:            eitem,
+			state:             c,
+			MenuOptionFunc:    eitem.MenuOptionFunc,
+			OnSelectFunc:      eitem.OnSelectFunc,
+			OnDropConfirmFunc: eitem.OnDropConfirmFunc,
+			expanded:          false,
+			needSync:          false,
 		})
 	}
 }
@@ -314,12 +325,13 @@ func (eitem *EntryNavItem) CreateChild(gtx C, kind NodeKind, postAction func(nod
 	childNode := eitem.state.Children()[0]
 
 	child := &EntryNavItem{
-		parent:         eitem,
-		state:          childNode,
-		menuOptionFunc: eitem.menuOptionFunc,
-		onSelectFunc:   eitem.onSelectFunc,
-		expanded:       false,
-		needSync:       false,
+		parent:            eitem,
+		state:             childNode,
+		MenuOptionFunc:    eitem.MenuOptionFunc,
+		OnSelectFunc:      eitem.OnSelectFunc,
+		OnDropConfirmFunc: eitem.OnDropConfirmFunc,
+		expanded:          false,
+		needSync:          false,
 	}
 
 	child.label = gv.EditableLabel(childNode.Name(), func(text string) {
@@ -431,7 +443,8 @@ func (eitem *EntryNavItem) Snapshot() *TreeState {
 	return state
 }
 
-// read data from clipboard.
+// Move file to the current dir or the dir of the current file. Set removeOld to false to
+// simulate a copy OP.
 func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavItem) error {
 	// when paste destination is a normal file node, use its parent dir to ease the CUT/COPY operations.
 	dest := eitem
@@ -448,6 +461,7 @@ func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavIte
 			}
 
 			if src != nil && src.parent != nil {
+				src.isCut = false
 				parent := src.parent
 				parent.children = slices.DeleteFunc(parent.children, func(chd navi.NavItem) bool {
 					entry := chd.(*EntryNavItem)
@@ -475,20 +489,25 @@ func (eitem *EntryNavItem) OnCopyOrCut(gtx C, isCut bool) {
 }
 
 func (eitem *EntryNavItem) Update(gtx C) error {
-	if eitem.draggable.Type == "" {
-		eitem.draggable.Type = EntryMIME
+	// re-create the reader to make sure each DnD/Copy/Cut operation can use it to read data.
+	if eitem.reader == nil || eitem.reader.Len() <= 0 {
+		eitem.reader = strings.NewReader(eitem.state.Path)
+	}
+
+	// focus conflicts with editable. so subscribe editable's key events here.
+	filters := []event.Filter{
+		key.Filter{Focus: eitem.label, Name: "C", Required: key.ModShortcut},
+		key.Filter{Focus: eitem.label, Name: "V", Required: key.ModShortcut},
+		key.Filter{Focus: eitem.label, Name: "X", Required: key.ModShortcut},
+		transfer.TargetFilter{Target: eitem, Type: mimeText},  //for copy, cut and paste
+		transfer.TargetFilter{Target: eitem, Type: EntryMIME}, // for DnD.
+	}
+	if eitem.state.IsDir() {
+		filters = append(filters, pointer.Filter{Target: eitem, Kinds: pointer.Enter | pointer.Leave})
 	}
 
 	for {
-		ke, ok := gtx.Event(
-			// focus conflicts with editable. so subscribe editable's key events here.
-			key.Filter{Focus: eitem.label, Name: "C", Required: key.ModShortcut},
-			key.Filter{Focus: eitem.label, Name: "V", Required: key.ModShortcut},
-			key.Filter{Focus: eitem.label, Name: "X", Required: key.ModShortcut},
-			transfer.TargetFilter{Target: eitem, Type: mimeOctStream},
-			transfer.TargetFilter{Target: eitem, Type: mimeText},
-		)
-
+		ke, ok := gtx.Event(filters...)
 		if !ok {
 			break
 		}
@@ -510,6 +529,18 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 				eitem.OnCopyOrCut(gtx, event.Name == "X")
 			}
 
+		case pointer.Event:
+			if event.Kind == pointer.Enter {
+				eitem.entered = true
+			} else if event.Kind == pointer.Leave {
+				eitem.entered = false
+			}
+
+		case transfer.InitiateEvent:
+			eitem.dndInited = true
+		case transfer.CancelEvent:
+			eitem.dndInited = false
+			eitem.entered = false
 		case transfer.DataEvent:
 			// read the clipboard content:
 			reader := event.Open()
@@ -521,8 +552,9 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 
 			defer gtx.Execute(op.InvalidateCmd{})
 
-			//FIXME: clipboard data might be invalid file path.
-			if event.Type == mimeText {
+			switch event.Type {
+			case mimeText:
+				//FIXME: clipboard data might be invalid file path.
 				p, err := toPayload(content)
 				if err == nil {
 					if err := eitem.OnPaste(p.Data, p.IsCut, p.GetSrc()); err != nil {
@@ -532,6 +564,23 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 					if err := eitem.OnPaste(string(content), false, nil); err != nil {
 						return err
 					}
+				}
+			case EntryMIME:
+				// Origin of transfer.OfferCmd is kept by gio
+				source, isFromEntryItem := reader.(*EntryNavItem)
+				if !isFromEntryItem {
+					break
+				}
+				if source == eitem || source.parent == eitem {
+					break
+				}
+
+				if eitem.OnDropConfirmFunc != nil {
+					eitem.OnDropConfirmFunc(string(content), eitem.state, func() {
+						eitem.OnPaste(string(content), true, source)
+					})
+				} else {
+					return eitem.OnPaste(string(content), true, source)
 				}
 			}
 
@@ -551,17 +600,25 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 	}
 
 	//Process transfer.RequestEvent for draggable.
+	if eitem.draggable.Type == "" {
+		eitem.draggable.Type = EntryMIME
+	}
 	if m, ok := eitem.draggable.Update(gtx); ok {
-		eitem.draggable.Offer(gtx, m, io.NopCloser(strings.NewReader(eitem.state.Path)))
+		eitem.draggable.Offer(gtx, m, eitem)
 	}
 
 	return nil
 }
 
-const (
-	mimeText      = "application/text"
-	mimeOctStream = "application/octet-stream"
-)
+// Implelments io.ReadCloser for widget.Draggable.
+func (eitem *EntryNavItem) Read(p []byte) (n int, err error) {
+
+	return eitem.reader.Read(p)
+}
+
+func (eitem *EntryNavItem) Close() error {
+	return nil
+}
 
 type payload struct {
 	IsCut bool    `json:"isCut"`
