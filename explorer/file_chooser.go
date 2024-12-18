@@ -190,6 +190,7 @@ func (vw *FileChooserDialog) Title() string {
 }
 
 func (vw *FileChooserDialog) OnNavTo(intent view.Intent) error {
+	vw.BaseView.OnNavTo(intent)
 	rc, ok := intent.Params["resultChan"]
 	if !ok {
 		return errors.New("missing mandatory params")
