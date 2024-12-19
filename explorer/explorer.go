@@ -505,11 +505,16 @@ func (ev *entryViewer) clearSelection() {
 
 func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 	return material.List(th.Theme, ev.list).Layout(gtx, len(ev.entryTree.Children()), func(gtx C, index int) D {
-		return layout.Inset{
+		inset := layout.Inset{
 			Left:  unit.Dp(4),
 			Right: unit.Dp(4),
-			Top:   unit.Dp(4),
-		}.Layout(gtx, func(gtx C) D {
+			Top:   unit.Dp(1),
+		}
+		if index == 0 {
+			inset.Top = unit.Dp(4)
+		}
+
+		return inset.Layout(gtx, func(gtx C) D {
 			entry := ev.entryTree.Children()[index]
 			if len(ev.items) < index+1 {
 				ev.items = append(ev.items, &entryItem{node: entry})
@@ -698,9 +703,9 @@ func (ei *entryItem) layoutBackground(gtx layout.Context, th *theme.Theme) layou
 
 	var fill color.NRGBA
 	if ei.hovering {
-		fill = misc.WithAlpha(th.Palette.Fg, th.HoverAlpha)
+		fill = misc.WithAlpha(th.Palette.ContrastBg, th.HoverAlpha)
 	} else if ei.selected {
-		fill = misc.WithAlpha(th.Palette.Fg, th.SelectedAlpha)
+		fill = misc.WithAlpha(th.Palette.ContrastBg, th.SelectedAlpha)
 	}
 
 	rr := gtx.Dp(unit.Dp(4))
@@ -723,7 +728,11 @@ func (ei *entryItem) Layout(gtx C, th *theme.Theme, entry *EntryNode) D {
 	macro := op.Record(gtx.Ops)
 	dims := layout.Background{}.Layout(gtx,
 		func(gtx C) D { return ei.layoutBackground(gtx, th) },
-		func(gtx C) D { return ei.layout(gtx, th, entry) },
+		func(gtx C) D {
+			return layout.Inset{Top: unit.Dp(2), Bottom: unit.Dp(2)}.Layout(gtx, func(gtx C) D {
+				return ei.layout(gtx, th, entry)
+			})
+		},
 	)
 
 	itemOps := macro.Stop()
