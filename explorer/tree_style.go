@@ -499,11 +499,15 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 		key.Filter{Focus: eitem.label, Name: "C", Required: key.ModShortcut},
 		key.Filter{Focus: eitem.label, Name: "V", Required: key.ModShortcut},
 		key.Filter{Focus: eitem.label, Name: "X", Required: key.ModShortcut},
-		transfer.TargetFilter{Target: eitem, Type: mimeText},  //for copy, cut and paste
-		transfer.TargetFilter{Target: eitem, Type: EntryMIME}, // for DnD.
+		transfer.TargetFilter{Target: eitem, Type: mimeText}, //for copy, cut and paste
 	}
 	if eitem.state.IsDir() {
-		filters = append(filters, pointer.Filter{Target: eitem, Kinds: pointer.Enter | pointer.Leave})
+		filters = append(filters,
+			// For DnD. This ensures only dir can be dragged and dropped to.
+			transfer.TargetFilter{Target: eitem, Type: EntryMIME},
+			// Detect if pointer is inside of the dir item, so we can highlight it when dropping items to it.
+			pointer.Filter{Target: eitem, Kinds: pointer.Enter | pointer.Leave},
+		)
 	}
 
 	for {
