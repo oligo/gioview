@@ -51,6 +51,8 @@ type ModalView struct {
 	// The max value is restricted to 0.9 to prevent it overflow.
 	MaxHeight float32
 	Radius    unit.Dp
+	// Make the ModalView halted. Halted modal view will not receive key events.
+	Halted bool
 	//position  f32.Point
 	dims     layout.Dimensions
 	closed   bool
@@ -82,20 +84,24 @@ func (m *ModalView) update(gtx layout.Context) bool {
 		m.closed = true
 	}
 
-	for {
-		// Use a global event filter to catch quit events.
-		// Applications have to be very careful as they may also use global escape
-		// elsewhere, which causes conflicts.
-		event, ok := gtx.Event(key.Filter{Name: key.NameEscape})
-		if !ok {
-			break
-		}
-		ev, ok := event.(key.Event)
-		if !ok {
-			continue
-		}
-		if ev.Name == key.NameEscape {
-			m.closed = true
+	if m.anim != nil && m.anim.Visible() && !m.Halted {
+		for {
+			// Use a global event filter to catch quit events.
+			// Applications have to be very careful as they may also use global escape
+			// elsewhere, which causes conflicts.
+			event, ok := gtx.Event(key.Filter{Name: key.NameEscape})
+			if !ok {
+				break
+			}
+
+			ev, ok := event.(key.Event)
+			if !ok {
+				continue
+			}
+
+			if ev.Name == key.NameEscape && ev.State == key.Release {
+				m.closed = true
+			}
 		}
 	}
 

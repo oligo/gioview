@@ -3,6 +3,7 @@ package view
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"log"
 	"net/url"
 	"slices"
@@ -49,6 +50,24 @@ func (vm *defaultViewManager) NextModalView() *ModalView {
 	}
 
 	return &ModalView{View: vw}
+
+}
+
+func (vm *defaultViewManager) ModalViews() iter.Seq[*ModalView] {
+	return func(yield func(*ModalView) bool) {
+		if vm.modalStack == nil {
+			return
+		}
+
+		viewIter := vm.modalStack.All(true)
+
+		for vw := range viewIter {
+			if !yield(vw.(*ModalView)) {
+				return
+			}
+		}
+	}
+
 }
 
 func (vm *defaultViewManager) FinishModalView() {
@@ -131,6 +150,9 @@ func (vm *defaultViewManager) RequestSwitch(intent Intent) error {
 		targetView = topVw
 	} else {
 		targetView = provider()
+		if intent.ShowAsModal {
+			targetView = &ModalView{View: targetView}
+		}
 		err := stack.Push(targetView)
 		if err != nil {
 			return fmt.Errorf("push to viewstack error: %w", err)

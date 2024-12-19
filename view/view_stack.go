@@ -2,6 +2,7 @@ package view
 
 import (
 	"container/list"
+	"iter"
 )
 
 // ViewStack is for view navigation history
@@ -58,6 +59,30 @@ func (vs *ViewStack) Depth() int {
 		return 0
 	}
 	return vs.viewList.Len()
+}
+
+// All returns a iterator that iterates through the stack of views from back to front,
+// or from front to back.
+func (vs *ViewStack) All(backward bool) iter.Seq[View] {
+	return func(yield func(View) bool) {
+		var v *list.Element
+		if backward {
+			v = vs.viewList.Back()
+		} else {
+			v = vs.viewList.Front()
+		}
+		for v != nil {
+			if !yield(v.Value.(View)) {
+				return
+			}
+
+			if backward {
+				v = v.Prev()
+			} else {
+				v = v.Next()
+			}
+		}
+	}
 }
 
 func (vs *ViewStack) Clear() {

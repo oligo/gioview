@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"iter"
 	"net/url"
 
 	"github.com/oligo/gioview/theme"
@@ -85,9 +86,12 @@ type ViewManager interface {
 	// Check is there are any naviBack-able views in the current stack or not. This should not
 	// count for the current view.
 	HasPrev() bool
+	// Deprecated. Please use [ModalViews] to handle multple stacked modal views.
 	// return the next view that is intened to be shown in the modal layer. It returns nil if
 	// there's no shownAsModal intent request.
 	NextModalView() *ModalView
+	// ModalViews returns all stacked modal views from back to front.
+	ModalViews() iter.Seq[*ModalView]
 	// finish the last modal view handling.
 	FinishModalView()
 	// refresh the window

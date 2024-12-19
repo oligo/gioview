@@ -8,6 +8,7 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -19,7 +20,6 @@ type HomeView struct {
 	view.ViewManager
 	sidebar      *NavDrawer
 	tabbar       *navi.Tabbar
-	currentModal *view.ModalView
 }
 
 func (hv *HomeView) ID() string {
@@ -82,23 +82,35 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 		}),
 	)
 
-	if hv.currentModal == nil {
-		if modal := hv.NextModalView(); modal != nil {
-			hv.currentModal = modal
-			hv.currentModal.Background = th.Bg
-			hv.currentModal.Radius = unit.Dp(8)
-			hv.currentModal.MaxWidth = unit.Dp(760)
-			hv.currentModal.MaxHeight = 0.6
-			hv.currentModal.ShowUp(gtx)
+	modalIter := hv.ModalViews()
+
+	var allModals []*view.ModalView
+	for modal := range modalIter {
+		modal.Halted = true
+		modal.Background = th.Bg
+		modal.MaxWidth = unit.Dp(760)
+		modal.MaxHeight = 0.7
+		modal.Radius = unit.Dp(8)
+
+		allModals = append(allModals, modal)
+	}
+
+	for i, modal := range allModals {
+		modal.ShowUp(gtx)
+
+		if i == len(allModals)-1 {
+			modal.Halted = false
 		}
-	} else {
+
 		// closing modal view
-		if hv.currentModal.IsClosed(gtx) {
+		if modal.IsClosed(gtx) {
+			// should be the top most view.
 			hv.FinishModalView()
-			hv.currentModal = nil
+			gtx.Execute(op.InvalidateCmd{})
 		} else {
-			hv.currentModal.Layout(gtx, th)
+			modal.Layout(gtx, th)
 		}
+
 	}
 
 	return dims
