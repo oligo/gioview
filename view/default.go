@@ -12,6 +12,8 @@ import (
 	"gioui.org/app"
 )
 
+var _ ViewManager = (*defaultViewManager)(nil)
+
 type defaultViewManager struct {
 	window *app.Window
 	stacks []*ViewStack
