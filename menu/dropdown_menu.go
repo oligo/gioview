@@ -38,7 +38,7 @@ func (m *DropdownMenu) Layout(gtx C, th *theme.Theme) D {
 
 }
 
-// Update states and report whether the dropdown menu is visible.
+// Update states and report whether the dropdown menu has just dismissed.
 func (m *DropdownMenu) Update(gtx C) bool {
 	if m.requestDismiss && m.modalLayer.Visible() {
 		m.modalLayer.Disappear(gtx.Now)
@@ -63,9 +63,11 @@ func (m *DropdownMenu) Update(gtx C) bool {
 		m.update(gtx)
 	}
 
-	return m.modalLayer.Visible()
+	return m.modalLayer.Dismissed()
 }
 
-func (m *DropdownMenu) ToggleVisibility(gtx C) {
+// ToggleVisibility toggles the visibility state and report the changed state.
+func (m *DropdownMenu) ToggleVisibility(gtx C) bool {
 	m.modalLayer.ToggleVisibility(gtx.Now)
+	return m.modalLayer.Visible()
 }

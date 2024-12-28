@@ -17,7 +17,8 @@ import (
 // by other components with dismissble modal dialogs.
 type ModalLayer struct {
 	component.VisibilityAnimation
-	Widget func(gtx layout.Context, th *material.Theme, anim *component.VisibilityAnimation) layout.Dimensions
+	Widget        func(gtx layout.Context, th *material.Theme, anim *component.VisibilityAnimation) layout.Dimensions
+	justDismissed bool
 }
 
 const defaultModalAnimationDuration = time.Millisecond * 250
@@ -33,7 +34,7 @@ func NewModal() *ModalLayer {
 // Layout renders the modal layer. Unless a modal widget has been triggered,
 // this will do nothing.
 func (m *ModalLayer) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
-	m.update(gtx)
+	m.Update(gtx)
 	if !m.Visible() {
 		return D{}
 	}
@@ -77,7 +78,7 @@ func (m *ModalLayer) Layout(gtx layout.Context, th *material.Theme) layout.Dimen
 
 }
 
-func (m *ModalLayer) update(gtx C) {
+func (m *ModalLayer) Update(gtx C) {
 	// Dismiss the contextual widget if the user clicked outside of it.
 	for {
 		ev, ok := gtx.Event(pointer.Filter{
@@ -95,4 +96,26 @@ func (m *ModalLayer) update(gtx C) {
 			m.Disappear(gtx.Now)
 		}
 	}
+}
+
+func (m *ModalLayer) Disappear(now time.Time) {
+	if m.Visible() && !m.Animating() {
+		m.justDismissed = true
+	}
+	m.VisibilityAnimation.Disappear(now)
+}
+
+func (m *ModalLayer) ToggleVisibility(now time.Time) {
+	if m.Visible() {
+		m.Disappear(now)
+	} else {
+		m.Appear(now)
+	}
+}
+
+func (m *ModalLayer) Dismissed() bool {
+	defer func() {
+		m.justDismissed = false
+	}()
+	return m.justDismissed
 }
