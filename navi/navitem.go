@@ -27,13 +27,6 @@ var (
 	moreIcon, _ = widget.NewIcon(icons.NavigationMoreHoriz)
 )
 
-var NavItemPadding = layout.Inset{
-	Left:   unit.Dp(4),
-	Right:  unit.Dp(4),
-	Top:    unit.Dp(1),
-	Bottom: unit.Dp(1),
-}
-
 type NavItem interface {
 	Layout(gtx layout.Context, th *theme.Theme, textColor color.NRGBA) D
 	// when there's menu options, a context menu should be attached to this navItem.
@@ -53,7 +46,11 @@ type NavTree struct {
 
 	childList layout.List
 	children  []*NavTree
+	depth     int
 	OnClicked func(item *NavTree)
+	// child items indention and vertical padding. Only has to be set on root tree.
+	Indention       unit.Dp
+	VerticalPadding unit.Dp
 }
 
 func (n *NavTree) IsSelected() bool {
@@ -83,11 +80,11 @@ func (n *NavTree) Update(gtx C) bool {
 	return false
 }
 
-func (n *NavTree) layoutRoot(gtx layout.Context, th *theme.Theme) layout.Dimensions {
+func (n *NavTree) layoutRoot(gtx layout.Context, th *theme.Theme, inset layout.Inset) layout.Dimensions {
 	macro := op.Record(gtx.Ops)
-	dims := layout.Inset{Bottom: unit.Dp(2)}.Layout(gtx, func(gtx C) D {
+	dims := layout.Inset{Bottom: unit.Dp(1)}.Layout(gtx, func(gtx C) D {
 		return n.label.Layout(gtx, th, func(gtx C, color color.NRGBA) D {
-			return NavItemPadding.Layout(gtx, func(gtx C) D {
+			return inset.Layout(gtx, func(gtx C) D {
 				return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 					layout.Flexed(1, func(gtx C) D {
 						return layout.W.Layout(gtx, func(gtx C) D {
@@ -139,37 +136,40 @@ func (n *NavTree) Layout(gtx C, th *theme.Theme) D {
 	if changed || len(n.children) != len(itemChildren) {
 		n.children = n.children[:0]
 		for _, child := range itemChildren {
-			n.children = append(n.children, NewNavItem(child, n.OnClicked))
+			subtree := NewNavItem(child, n.OnClicked)
+			subtree.depth = n.depth + 1
+			subtree.Indention = n.Indention
+			subtree.VerticalPadding = n.VerticalPadding
+			n.children = append(n.children, subtree)
 		}
 	}
 
-	if len(n.children) <= 0 {
-		return n.layoutRoot(gtx, th)
-	}
-
 	n.childList.Axis = layout.Vertical
+
+	inset := layout.Inset{
+		Top:    n.VerticalPadding,
+		Bottom: n.VerticalPadding,
+		Left:   unit.Dp(8) + unit.Dp(n.depth*int(n.Indention)),
+		Right:  unit.Dp(10),
+	}
 
 	return layout.Flex{
 		Axis:      layout.Vertical,
 		Alignment: layout.Middle,
 	}.Layout(gtx,
 		layout.Rigid(func(gtx C) D {
-			return n.layoutRoot(gtx, th)
+			return n.layoutRoot(gtx, th, inset)
 		}),
 		layout.Rigid(func(gtx C) D {
-			return layout.Inset{
-				Top:    unit.Dp(4),
-				Bottom: unit.Dp(4),
-				Left:   unit.Dp(10),
-				Right:  unit.Dp(10),
-			}.Layout(gtx, func(gtx C) D {
-				return n.childList.Layout(gtx, len(n.children), func(gtx C, index int) D {
-					return n.children[index].Layout(gtx, th)
-				})
+			if len(n.children) <= 0 {
+				return D{}
+			}
+
+			return n.childList.Layout(gtx, len(n.children), func(gtx C, index int) D {
+				return n.children[index].Layout(gtx, th)
 			})
 		}),
 	)
-
 }
 
 func NewNavItem(item NavItem, onClicked func(item *NavTree)) *NavTree {

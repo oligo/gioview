@@ -112,8 +112,10 @@ type FileExplorer struct {
 }
 
 var (
-	diskIcon, _ = widget.NewIcon(icons.HardwareComputer)
-	homeIcon, _ = widget.NewIcon(icons.ActionHome)
+	diskIcon, _   = widget.NewIcon(icons.HardwareComputer)
+	homeIcon, _   = widget.NewIcon(icons.ActionHome)
+	folderIcon, _ = widget.NewIcon(icons.FileFolder)
+	fileIcon, _   = widget.NewIcon(icons.ActionDescription)
 
 	//folderIcon, _     = widget.NewIcon(icons.FileFolder)
 	//fileIcon, _       = widget.NewIcon(icons.ActionDescription)

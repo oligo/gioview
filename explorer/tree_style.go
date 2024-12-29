@@ -46,9 +46,12 @@ const (
 )
 
 var (
-	folderIcon, _     = widget.NewIcon(icons.FileFolder)
-	folderOpenIcon, _ = widget.NewIcon(icons.FileFolderOpen)
-	fileIcon, _       = widget.NewIcon(icons.ActionDescription)
+	// Icons used in file tree.
+	FolderIcon, _     = widget.NewIcon(icons.FileFolder)
+	FolderOpenIcon, _ = widget.NewIcon(icons.FileFolderOpen)
+	FileIcon, _       = widget.NewIcon(icons.ActionDescription)
+	// File tree icon size
+	IconSize = unit.Dp(14)
 )
 
 var _ navi.NavItem = (*EntryNavItem)(nil)
@@ -115,12 +118,12 @@ func NewEntryNavItem(rootDir string) (*EntryNavItem, error) {
 func (eitem *EntryNavItem) icon() *widget.Icon {
 	if eitem.state.Kind() == FolderNode {
 		if eitem.expanded {
-			return folderOpenIcon
+			return FolderOpenIcon
 		}
-		return folderIcon
+		return FolderIcon
 	}
 
-	return fileIcon
+	return FileIcon
 }
 
 func (eitem *EntryNavItem) OnSelect() {
@@ -182,7 +185,7 @@ func (eitem *EntryNavItem) layout(gtx layout.Context, th *theme.Theme, textColor
 					}
 					return layout.Inset{Right: unit.Dp(6)}.Layout(gtx, func(gtx C) D {
 						iconColor := th.ContrastBg
-						return misc.Icon{Icon: eitem.icon(), Color: iconColor, Size: unit.Dp(th.TextSize)}.Layout(gtx, th)
+						return misc.Icon{Icon: eitem.icon(), Color: iconColor, Size: IconSize}.Layout(gtx, th)
 					})
 				}),
 				layout.Flexed(1, func(gtx C) D {

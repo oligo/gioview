@@ -18,8 +18,8 @@ import (
 
 type HomeView struct {
 	view.ViewManager
-	sidebar      *NavDrawer
-	tabbar       *navi.Tabbar
+	sidebar *NavDrawer
+	tabbar  *navi.Tabbar
 }
 
 func (hv *HomeView) ID() string {
@@ -46,10 +46,10 @@ func (hv *HomeView) LayoutMain(gtx C, th *theme.Theme) layout.Dimensions {
 				Inset: layout.Inset{
 					Top:    unit.Dp(20),
 					Bottom: unit.Dp(20),
-					Left:   unit.Dp(20),
+					Left:   unit.Dp(2),
 				},
 				Bg:    th.Bg2,
-				Width: unit.Dp(max(gtx.Constraints.Max.X/(6*int(gtx.Metric.PxPerDp)), 220)),
+				Width: unit.Dp(max(gtx.Constraints.Max.X/(6*int(gtx.Metric.PxPerDp)), 250)),
 			}.Layout(gtx, th)
 
 		}),

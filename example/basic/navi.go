@@ -85,7 +85,9 @@ func (nv *NavDrawer) Layout(gtx C, th *theme.Theme) D {
 		}
 	}
 
-	return material.List(th.Theme, nv.listState).Layout(gtx, len(nv.listItems), func(gtx C, index int) D {
+	list := material.List(th.Theme, nv.listState)
+	list.AnchorStrategy = material.Overlay
+	return list.Layout(gtx, len(nv.listItems), func(gtx C, index int) D {
 		item := nv.listItems[index]
 		dims := nv.SectionInset.Layout(gtx, func(gtx C) D {
 			return layout.Flex{
@@ -97,7 +99,7 @@ func (nv *NavDrawer) Layout(gtx C, th *theme.Theme) D {
 					}
 
 					return layout.Inset{
-						Bottom: unit.Dp(5),
+						Bottom: unit.Dp(1),
 					}.Layout(gtx, func(gtx C) D {
 						label := material.Label(th.Theme, th.TextSize, item.Title())
 						label.Color = misc.WithAlpha(th.Fg, 0xb6)
@@ -123,6 +125,8 @@ func (nv *NavDrawer) OnItemSelected(item *navi.NavTree) {
 		}
 		nv.selectedItem = item
 	}
+
+	nv.vm.Invalidate()
 }
 
 func (ns NaviDrawerStyle) Layout(gtx C, th *theme.Theme) D {
@@ -174,16 +178,20 @@ func (ss simpleItemSection) Layout(gtx C, th *theme.Theme) D {
 
 func SimpleItemSection(icon *widget.Icon, name string, onSelect func(item *navi.NavTree)) NavSection {
 	item := navi.NewNavItem(simpleNavItem{icon: icon, name: name}, onSelect)
+	item.VerticalPadding = unit.Dp(4)
 	return simpleItemSection{item: item}
 }
 
 // Construct a FileTreeNav object that loads files and folders from rootDir. The skipFolders
 // parameter allows you to specify folder name prefixes to exclude from the navigation.
 func NewFileTreeNav(title string, navRoot *explorer.EntryNavItem, onClick func(item *navi.NavTree)) *FileTreeNav {
-	return &FileTreeNav{
+	tree := &FileTreeNav{
 		title: title,
 		root:  navi.NewNavItem(navRoot, onClick),
 	}
+	tree.root.Indention = unit.Dp(8)
+	tree.root.VerticalPadding = unit.Dp(4)
+	return tree
 }
 
 func (tn *FileTreeNav) Title() string {

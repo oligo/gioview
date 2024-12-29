@@ -21,6 +21,7 @@ type InteractiveLabel struct {
 	itemClick  gesture.Click
 	isSelected bool
 	hovering   bool
+	Radius     unit.Dp
 }
 
 func (l *InteractiveLabel) IsSelected() bool {
@@ -84,7 +85,7 @@ func (l *InteractiveLabel) layoutBackground(gtx layout.Context, th *theme.Theme)
 	} else if l.isSelected {
 		fill = misc.WithAlpha(th.Palette.Fg, th.SelectedAlpha)
 	}
-	rr := gtx.Dp(unit.Dp(4))
+	rr := gtx.Dp(l.Radius)
 	rect := clip.RRect{
 		Rect: image.Rectangle{
 			Max: image.Point{X: gtx.Constraints.Max.X, Y: gtx.Constraints.Min.Y},
