@@ -487,7 +487,7 @@ func (eitem *EntryNavItem) OnPaste(data string, removeOld bool, src *EntryNavIte
 }
 
 func (eitem *EntryNavItem) OnCopyOrCut(gtx C, isCut bool) {
-	gtx.Execute(clipboard.WriteCmd{Type: mimeText, Data: io.NopCloser(asPayload(eitem, eitem.Path(), isCut))})
+	gtx.Execute(clipboard.WriteCmd{Type: mimeText, Data: io.NopCloser(EncodeClipboardData(eitem, eitem.Path(), isCut))})
 	eitem.isCut = isCut
 }
 
@@ -562,7 +562,7 @@ func (eitem *EntryNavItem) Update(gtx C) error {
 			switch event.Type {
 			case mimeText:
 				//FIXME: clipboard data might be invalid file path.
-				p, err := toPayload(content)
+				p, err := ParseClipboardData(content)
 				if err == nil {
 					if err := eitem.OnPaste(p.Data, p.IsCut, p.GetSrc()); err != nil {
 						return err
@@ -627,18 +627,19 @@ func (eitem *EntryNavItem) Close() error {
 	return nil
 }
 
-type payload struct {
+// ClipboardData is exported to enable in-app copy&paste.
+type ClipboardData struct {
 	IsCut bool    `json:"isCut"`
 	Data  string  `json:"data"`
 	Src   uintptr `json:"src"`
 }
 
-func (p *payload) GetSrc() *EntryNavItem {
+func (p *ClipboardData) GetSrc() *EntryNavItem {
 	return (*EntryNavItem)(unsafe.Pointer(p.Src))
 }
 
-func asPayload(src *EntryNavItem, data string, isCut bool) io.Reader {
-	p := payload{Data: data, IsCut: isCut, Src: uintptr(unsafe.Pointer(src))}
+func EncodeClipboardData(src *EntryNavItem, data string, isCut bool) io.Reader {
+	p := ClipboardData{Data: data, IsCut: isCut, Src: uintptr(unsafe.Pointer(src))}
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(p)
 	if err != nil {
@@ -648,8 +649,8 @@ func asPayload(src *EntryNavItem, data string, isCut bool) io.Reader {
 	return strings.NewReader(buf.String())
 }
 
-func toPayload(buf []byte) (*payload, error) {
-	p := payload{}
+func ParseClipboardData(buf []byte) (*ClipboardData, error) {
+	p := ClipboardData{}
 	err := json.Unmarshal(buf, &p)
 	if err != nil {
 		return nil, err
