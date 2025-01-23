@@ -247,29 +247,3 @@ func (span *glyphSpan) calculateBgRect() clip.Rect {
 		Max: image.Point{X: maxX, Y: maxY},
 	}
 }
-
-func toGlyphStyle(g text.Glyph, start int, detaultMaterial op.CallOp, styles []*TextStyle) glyphStyle {
-	var style *TextStyle
-	for _, s := range styles {
-		if start >= s.Start && start < s.End {
-			style = s
-			break
-		}
-	}
-
-	gs := glyphStyle{g: g}
-
-	if style == nil {
-		gs.fg = detaultMaterial
-		return gs
-	}
-
-	gs.fg = style.Color
-	gs.bg = style.Background
-
-	if style.Color == (op.CallOp{}) {
-		gs.fg = detaultMaterial
-	}
-
-	return gs
-}

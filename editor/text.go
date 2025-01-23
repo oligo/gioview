@@ -485,13 +485,11 @@ func (e *textView) PaintText(gtx layout.Context, material op.CallOp, textStyles 
 	}
 	var glyphs [32]glyphStyle
 	line := glyphs[:0]
-	start := startGlyph
 	for _, g := range e.index.glyphs[startGlyph:] {
 		var ok bool
-		if line, ok = it.paintGlyph(gtx, e.shaper, toGlyphStyle(g, start, material, textStyles), line); !ok {
+		if line, ok = it.paintGlyph(gtx, e.shaper, e.styleForGlyph(g, material, textStyles), line); !ok {
 			break
 		}
-		start++
 	}
 
 	call := m.Stop()
@@ -994,4 +992,33 @@ func (e *textView) Regions(start, end int, regions []Region) []Region {
 		Max: e.viewSize.Add(e.scrollOff),
 	}
 	return e.index.locate(viewport, start, end, regions)
+}
+
+func (e *textView) styleForGlyph(g text.Glyph, detaultMaterial op.CallOp, styles []*TextStyle) glyphStyle {
+	gs := glyphStyle{g: g}
+
+	pos := e.index.closestToXY(g.X, int(g.Y))
+	idx := sort.Search(len(styles), func(i int) bool {
+		s := styles[i]
+		return s.Start > pos.runes
+	})
+
+	if idx >= len(styles) {
+		gs.fg = detaultMaterial
+		return gs
+	}
+
+	if idx > 0 {
+		idx--
+	}
+
+	style := styles[idx]
+	gs.fg = style.Color
+	gs.bg = style.Background
+
+	if style.Color == (op.CallOp{}) {
+		gs.fg = detaultMaterial
+	}
+
+	return gs
 }
