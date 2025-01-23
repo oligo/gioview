@@ -65,6 +65,10 @@ func (vs *ViewStack) Depth() int {
 // or from front to back.
 func (vs *ViewStack) All(backward bool) iter.Seq[View] {
 	return func(yield func(View) bool) {
+		if vs.viewList == nil || vs.viewList.Len()<=0 {
+			return
+		}
+
 		var v *list.Element
 		if backward {
 			v = vs.viewList.Back()

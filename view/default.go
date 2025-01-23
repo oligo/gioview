@@ -42,6 +42,8 @@ func (vm *defaultViewManager) CurrentView() View {
 	return vw
 }
 
+// Deprecated: use ModalViews method instead as ViewManager now
+// handles multiple stacked modals.
 func (vm *defaultViewManager) NextModalView() *ModalView {
 	if vm.modalStack == nil {
 		return nil
