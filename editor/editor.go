@@ -69,6 +69,9 @@ type Editor struct {
 	// selected text.
 	KeepFocus bool
 
+	// TabCharacter is the character used to represent a tab. If empty, \t is used.
+	TabCharacter string
+
 	buffer     *editBuffer
 	textStyles []*TextStyle
 	// Match ranges in rune offset, for text search.
@@ -528,7 +531,7 @@ func (e *Editor) command(gtx layout.Context, k key.Event) (EditorEvent, bool) {
 		}
 	case key.NameTab:
 		if !e.ReadOnly {
-			if e.Insert("\t") != 0 {
+			if e.Insert(e.TabCharacter) != 0 {
 				return ChangeEvent{}, true
 			}
 		}
