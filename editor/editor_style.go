@@ -15,6 +15,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
+
 	"github.com/oligo/gioview/misc"
 )
 
@@ -79,9 +80,16 @@ type EditorConf struct {
 	ShowLineNum bool
 	// padding between line number and the editor content.
 	LineNumPadding unit.Dp
+
+	// TabCharacter is the character used to represent a tab.
+	TabCharacter string
 }
 
 func NewEditor(editor *Editor, conf *EditorConf, hint string) EditorStyle {
+	editor.TabCharacter = "\t"
+	if conf.TabCharacter != "" {
+		editor.TabCharacter = conf.TabCharacter
+	}
 
 	es := EditorStyle{
 		Editor: editor,
