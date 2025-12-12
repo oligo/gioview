@@ -33,7 +33,8 @@ func (m *ContextMenu) Layout(gtx C, th *theme.Theme) D {
 	return m.layout(gtx, th, m.contextArea.Layout)
 }
 
-func (m *ContextMenu) Update(gtx C) {
+// Update the state and reports if the menu is active.
+func (m *ContextMenu) Update(gtx C) bool {
 	m.contextArea.PositionHint = m.PositionHint
 	if m.contextArea.Activated() {
 		m.onActivated(gtx)
@@ -50,5 +51,8 @@ func (m *ContextMenu) Update(gtx C) {
 
 	if m.contextArea.Active() {
 		m.update(gtx)
+		return true
 	}
+
+	return false
 }
