@@ -506,7 +506,17 @@ func (ev *entryViewer) clearSelection() {
 }
 
 func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
-	return material.List(th.Theme, ev.list).Layout(gtx, len(ev.entryTree.Children()), func(gtx C, index int) D {
+	children := ev.entryTree.Children()
+	if len(ev.items) != len(children) {
+		ev.items = ev.items[:0]
+	}
+
+	return material.List(th.Theme, ev.list).Layout(gtx, len(children), func(gtx C, index int) D {
+		entry := children[index]
+		if len(ev.items) < index+1 {
+			ev.items = append(ev.items, &entryItem{node: entry})
+		}
+
 		inset := layout.Inset{
 			Left:  unit.Dp(4),
 			Right: unit.Dp(4),
@@ -517,11 +527,6 @@ func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 		}
 
 		return inset.Layout(gtx, func(gtx C) D {
-			entry := ev.entryTree.Children()[index]
-			if len(ev.items) < index+1 {
-				ev.items = append(ev.items, &entryItem{node: entry})
-			}
-
 			item := ev.items[index]
 			action := item.Update(gtx)
 
