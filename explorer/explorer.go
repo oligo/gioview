@@ -83,7 +83,7 @@ type entryViewer struct {
 	entryFilter EntryFilter
 	pendingNext *EntryNode // to prevent list layout conflicts.
 	list        *widget.List
-	items       []*entryItem
+	items       map[*EntryNode]*entryItem
 	// selected items
 	selectedItems map[*entryItem]struct{}
 	multiSelect   bool
@@ -154,6 +154,7 @@ func newEntryViewer(path string, history *history, filter EntryFilter) *entryVie
 		},
 		panel:         &entryPanel{},
 		history:       history,
+		items:         make(map[*EntryNode]*entryItem),
 		selectedItems: make(map[*entryItem]struct{}),
 	}
 
@@ -467,7 +468,7 @@ func (ev *entryViewer) Update(gtx C) {
 	// reset if node tree changed
 	if lastTree != ev.entryTree || len(ev.entryTree.Children()) != len(lastTree.Children()) {
 		ev.list.Position.First = 0
-		ev.items = ev.items[:0]
+		clear(ev.items)
 		ev.clearSelection()
 	}
 
@@ -507,14 +508,11 @@ func (ev *entryViewer) clearSelection() {
 
 func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 	children := ev.entryTree.Children()
-	if len(ev.items) != len(children) {
-		ev.items = ev.items[:0]
-	}
 
 	return material.List(th.Theme, ev.list).Layout(gtx, len(children), func(gtx C, index int) D {
 		entry := children[index]
-		if len(ev.items) < index+1 {
-			ev.items = append(ev.items, &entryItem{node: entry})
+		if _, exists := ev.items[entry]; !exists {
+			ev.items[entry] = &entryItem{node: entry}
 		}
 
 		inset := layout.Inset{
@@ -527,7 +525,7 @@ func (ev *entryViewer) layoutEntries(gtx C, th *theme.Theme) D {
 		}
 
 		return inset.Layout(gtx, func(gtx C) D {
-			item := ev.items[index]
+			item := ev.items[entry]
 			action := item.Update(gtx)
 
 			switch action {
