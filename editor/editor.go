@@ -476,12 +476,15 @@ func (e *Editor) command(gtx layout.Context, k key.Event) (EditorEvent, bool) {
 	if gtx.Locale.Direction.Progression() == system.TowardOrigin {
 		direction = -1
 	}
-	moveByWord := k.Modifiers.Contain(key.ModShortcutAlt)
 	selAct := selectionClear
 	if k.Modifiers.Contain(key.ModShift) {
 		selAct = selectionExtend
 	}
-	if k.Modifiers.Contain(key.ModShortcut) {
+
+	moveByWord := k.Modifiers.Contain(key.ModShortcutAlt)
+	leftOrRightArrow := k.Name == key.NameLeftArrow || k.Name == key.NameRightArrow
+
+	if k.Modifiers.Contain(key.ModShortcut) && !leftOrRightArrow {
 		switch k.Name {
 		// Initiate a paste operation, by requesting the clipboard contents; other
 		// half is in Editor.processKey() under clipboard.Event.

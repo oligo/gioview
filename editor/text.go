@@ -867,7 +867,7 @@ func (e *textView) MoveWord(distance int, selAct selectionAction) {
 		}
 		e.MoveCaret(direction, 0)
 		caret = e.closestToRune(e.caret.start)
-		for r := next(); !unicode.IsSpace(r) && !atEnd(); r = next() {
+		for r := next(); !unicode.IsSpace(r) && !unicode.IsPunct(r) && !atEnd(); r = next() {
 			e.MoveCaret(direction, 0)
 			caret = e.closestToRune(e.caret.start)
 		}
