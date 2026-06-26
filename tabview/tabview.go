@@ -263,6 +263,18 @@ func (tv *TabView) CurrentTab() int {
 	return tv.currentView
 }
 
+// SetCurrentTab switch the index of the active tab.
+func (tv *TabView) SetCurrentTab(idx int) {
+	if len(tv.tabItems) == 0 {
+		return
+	}
+
+	idx = min(idx, len(tv.tabItems)-1)
+	idx = max(idx, 0)
+
+	tv.currentView = idx
+}
+
 func (tv *TabView) calculateWidth(gtx C, th *theme.Theme) image.Point {
 	fakeOps := new(op.Ops)
 	current := gtx.Ops
