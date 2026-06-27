@@ -1,6 +1,7 @@
 package explorer
 
 import (
+	"errors"
 	"image"
 	"image/color"
 	"os"
@@ -388,7 +389,8 @@ func (loc *locationList) Layout(gtx C, th *theme.Theme) D {
 func (loc *locationList) update(gtx C) bool {
 	if loc.volumes == nil {
 		partitions, err := disk.Partitions(false)
-		if err != nil {
+		var warnings *disk.Warnings
+		if err != nil && !errors.As(err, &warnings) {
 			panic(err)
 		}
 
