@@ -22,6 +22,10 @@ const (
 	FolderNode
 )
 
+var (
+	DuplicatedEntryErr = errors.New("duplicated file/folder name")
+)
+
 // A filter is used to decide which files/folders are retained when
 // buiding a EntryNode's children. Returning false will remove the current
 // entry from from the children.
@@ -177,7 +181,7 @@ func (n *EntryNode) AddChild(name string, kind NodeKind) error {
 	}
 
 	if n.exists(name) {
-		return errors.New("duplicated file/folder name")
+		return DuplicatedEntryErr
 	}
 
 	path := filepath.Join(n.Path, name)
@@ -218,7 +222,7 @@ func (n *EntryNode) Copy(nodePath string) error {
 	}
 
 	if n.exists(filepath.Base(nodePath)) {
-		return errors.New("duplicated file/folder name: " + nodePath)
+		return DuplicatedEntryErr
 	}
 
 	nodeInfo, _ := os.Stat(nodePath)
@@ -255,7 +259,7 @@ func (n *EntryNode) Move(nodePath string) error {
 	}
 
 	if n.exists(filepath.Base(nodePath)) {
-		return errors.New("duplicated file/folder name")
+		return DuplicatedEntryErr
 	}
 
 	err := os.Rename(nodePath, filepath.Join(n.Path, filepath.Base(nodePath)))
@@ -289,7 +293,7 @@ func (n *EntryNode) UpdateName(newName string) error {
 	}
 
 	if n.Parent.exists(newName) {
-		return errors.New("duplicated file/folder name")
+		return DuplicatedEntryErr
 	}
 
 	newPath := filepath.Join(filepath.Dir(n.Path), newName)
