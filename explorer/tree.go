@@ -23,6 +23,8 @@ const (
 )
 
 var (
+	// DuplicatedEntryErr is returned by UpdateName when the target name already exists.
+	// AddChild, Copy, and Move auto-resolve name conflicts instead of returning this error.
 	DuplicatedEntryErr = errors.New("duplicated file/folder name")
 )
 
@@ -180,10 +182,7 @@ func (n *EntryNode) AddChild(name string, kind NodeKind) error {
 		return errors.New("empty file/folder name")
 	}
 
-	if n.exists(name) {
-		return DuplicatedEntryErr
-	}
-
+	name = uniqueName(n.Path, name)
 	path := filepath.Join(n.Path, name)
 	if kind == FileNode {
 		file, err := os.Create(path)
@@ -210,8 +209,8 @@ func (n *EntryNode) AddChild(name string, kind NodeKind) error {
 }
 
 // Copy copies the file at nodePath to the current folder.
-// Copy does not replace existing files/folders, instead it returns
-// an error indicating that case.
+// If an entry with the same name already exists, a unique name is generated
+// (e.g., "file-copy.txt", "file-copy-2.txt") to avoid conflicts.
 func (n *EntryNode) Copy(nodePath string) error {
 	if !n.IsDir() {
 		return nil
@@ -221,24 +220,23 @@ func (n *EntryNode) Copy(nodePath string) error {
 		return errors.New("not a valid entry path")
 	}
 
-	if n.exists(filepath.Base(nodePath)) {
-		return DuplicatedEntryErr
-	}
+	destName := uniqueName(n.Path, filepath.Base(nodePath))
+	destPath := filepath.Join(n.Path, destName)
 
 	nodeInfo, _ := os.Stat(nodePath)
 
 	switch nodeInfo.Mode() & os.ModeType {
 	case os.ModeDir:
-		err := copyDirectory(nodePath, n.Path)
+		err := copyDirectory(nodePath, destPath)
 		if err != nil {
 			return err
 		}
 	case os.ModeSymlink:
-		if err := copySymLink(nodePath, filepath.Join(n.Path, filepath.Base(nodePath))); err != nil {
+		if err := copySymLink(nodePath, destPath); err != nil {
 			return err
 		}
 	default:
-		if err := copyFile(nodePath, filepath.Join(n.Path, filepath.Base(nodePath))); err != nil {
+		if err := copyFile(nodePath, destPath); err != nil {
 			return err
 		}
 	}
@@ -247,8 +245,8 @@ func (n *EntryNode) Copy(nodePath string) error {
 }
 
 // Move moves the file at nodePath to the current folder.
-// Move does not replace existing files/folders, instead it returns
-// an error indicating that case.
+// If an entry with the same name already exists, a unique name is generated
+// (e.g., "file-copy.txt", "file-copy-2.txt") to avoid conflicts.
 func (n *EntryNode) Move(nodePath string) error {
 	if !n.IsDir() {
 		return nil
@@ -258,11 +256,10 @@ func (n *EntryNode) Move(nodePath string) error {
 		return errors.New("not a valid entry path")
 	}
 
-	if n.exists(filepath.Base(nodePath)) {
-		return DuplicatedEntryErr
-	}
+	destName := uniqueName(n.Path, filepath.Base(nodePath))
+	destPath := filepath.Join(n.Path, destName)
 
-	err := os.Rename(nodePath, filepath.Join(n.Path, filepath.Base(nodePath)))
+	err := os.Rename(nodePath, destPath)
 	if err != nil {
 		return err
 	}
@@ -436,10 +433,34 @@ func entryExists(path string) bool {
 	return !errors.Is(err, os.ErrNotExist)
 }
 
-// copyDirectory copies src dir to dest dir, preserving permissions and ownership.
+// uniqueName returns a name that doesn't conflict with existing entries in parentPath.
+// If the name already exists, it generates alternatives like "name-copy", "name-copy-2", etc.
+// For files with extensions, the extension is preserved: "file.txt" becomes "file-copy.txt".
+func uniqueName(parentPath, name string) string {
+	fullPath := filepath.Join(parentPath, name)
+	if !entryExists(fullPath) {
+		return name
+	}
+
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(name, ext)
+
+	candidate := base + "-copy" + ext
+	if !entryExists(filepath.Join(parentPath, candidate)) {
+		return candidate
+	}
+
+	for i := 2; ; i++ {
+		candidate = fmt.Sprintf("%s-copy-%d%s", base, i, ext)
+		if !entryExists(filepath.Join(parentPath, candidate)) {
+			return candidate
+		}
+	}
+}
+
+// copyDirectory copies src dir to dst, where dst is the full destination path.
 func copyDirectory(src, dst string) error {
-	subdir := filepath.Join(dst, filepath.Base(src))
-	if err := createDir(subdir, 0755); err != nil {
+	if err := createDir(dst, 0755); err != nil {
 		return err
 	}
 
@@ -449,7 +470,7 @@ func copyDirectory(src, dst string) error {
 	}
 	for _, entry := range entries {
 		sourcePath := filepath.Join(src, entry.Name())
-		destPath := filepath.Join(subdir, entry.Name())
+		destPath := filepath.Join(dst, entry.Name())
 
 		fileInfo, err := os.Stat(sourcePath)
 		if err != nil {
